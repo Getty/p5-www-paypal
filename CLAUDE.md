@@ -2,17 +2,15 @@
 
 Perl client for the PayPal REST API. Scope is driven by two concrete use cases: one-off product purchases (replacing legacy `Business::PayPal::API::ExpressCheckout`) and recurring monthly subscriptions.
 
-## Build & Test
+Build, test, POD conventions (`=attr`/`=method`/`=seealso`), release workflow, version-bump semantics and `Changes`/`{{$NEXT}}` handling are all inherited from the `[@Author::GETTY]` plugin bundle — see the **perl-release-author-getty** and **perl-release-dist-ini** skills. This file only documents what's specific to WWW::PayPal.
+
+## HTTP debugging
 
 ```bash
-dzil build          # Build distribution
-dzil test           # Unit tests
-dzil test --author  # Full suite incl. POD syntax + release checks
-prove -lv t/        # Run tests directly without dzil
-
-# HTTP debugging (full request/response dumps)
 perl -MLWP::ConsoleLogger::Everywhere examples/buy_demo.pl ...
 ```
+
+Full request/response dump for any script that uses the default `LWP::UserAgent` transport.
 
 ## End-to-end Demos
 
@@ -110,17 +108,6 @@ Entity classes wrap raw decoded JSON and expose the fields actually needed by co
 3. **Wire in** to `lib/WWW/PayPal.pm` with a `lazy` attr + builder
 4. **Test** in `t/openapi.t`: operation lookup, path param substitution, entity parsing with a sample JSON payload
 
-## POD Conventions (`[@Author::GETTY]` bundle)
-
-- Inline `=attr NAME` / `=method NAME` / `=synopsis` / `=description` / `=seealso` — the PodWeaver transformer rewrites these to `=head1`/`=head2` at build time.
-- `podchecker` doesn't know these directives; `dzil test --author` does the right check via `t/author-pod-syntax.t`.
-- Never hand-write `NAME` / `VERSION` / `AUTHOR` / `COPYRIGHT` — PodWeaver generates them from `dist.ini`.
-- `L<text|target>` alt text must NOT contain unescaped `/` or `|` — Test::Pod rejects them. Use `L<< text|target >>` or reword.
-
-## Versioning
-
-`[@Author::GETTY]` auto-bumps after release. The version in `dist.ini` / `$VERSION` is always the *next* release, not the current one; `{{$NEXT}}` in `Changes` is the placeholder for unreleased entries. Do NOT hand-bump before release — `dzil release` handles it.
-
 ## Tech
 
 - **Moo** for OOP (no Moose, no Moose dep chain)
@@ -128,10 +115,12 @@ Entity classes wrap raw decoded JSON and expose the fields actually needed by co
 - **JSON::MaybeXS** + `HTTP::Request` for request/response
 - **Log::Any** for logging
 - **MIME::Base64** for OAuth2 Basic auth header
-- **Dist::Zilla** with `[@Author::GETTY]`
 
 ## Related
 
 - [paypal-rest-api-specifications](https://github.com/paypal/paypal-rest-api-specifications) — upstream OpenAPI specs (source of truth for operation tables)
 - [PayPal Orders v2 reference](https://developer.paypal.com/docs/api/orders/v2/)
 - [PayPal Subscriptions reference](https://developer.paypal.com/docs/api/subscriptions/v1/)
+- `perl-www-paypal` skill — consumer-facing usage (for AIs working on projects that import `WWW::PayPal`)
+- `perl-release-author-getty` / `perl-release-dist-ini` skills — build, test, POD, `Changes` and release workflow
+- `perl-moo` skill — Moo patterns used throughout
