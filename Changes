@@ -1,6 +1,6 @@
 Revision history for WWW-PayPal
 
-{{$NEXT}}
+0.001     2026-04-15 19:41:41Z
     - Initial release
     - WWW::PayPal client with OAuth2 client_credentials token caching
       and sandbox/live switch
