@@ -5,7 +5,7 @@ package WWW::PayPal::Subscription;
 use Moo;
 use namespace::clean;
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =head1 SYNOPSIS
 

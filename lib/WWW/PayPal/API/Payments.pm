@@ -8,7 +8,7 @@ use WWW::PayPal::Capture;
 use WWW::PayPal::Refund;
 use namespace::clean;
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =head1 SYNOPSIS
 
