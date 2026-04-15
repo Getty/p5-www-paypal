@@ -113,7 +113,7 @@ sub create {
     );
 
 Creates a subscription and returns a L<WWW::PayPal::Subscription>. The buyer
-must be redirected to L<< /approve_url|WWW::PayPal::Subscription/approve_url >>
+must be redirected to L<< approve_url|WWW::PayPal::Subscription/approve_url >>
 before PayPal starts billing.
 
 =cut
