@@ -23,14 +23,13 @@ our $VERSION = '0.002';
         sandbox   => 1,                    # default: 0 (live)
     );
 
-    # Create an order (replaces SetExpressCheckout)
-    my $order = $pp->orders->create(
-        intent         => 'CAPTURE',
-        purchase_units => [{
-            amount => { currency_code => 'EUR', value => '42.00' },
-        }],
+    # Create an order — one-liner Express Checkout replacement
+    my $order = $pp->orders->checkout(
+        amount     => '42.00',
+        currency   => 'EUR',
         return_url => 'https://example.com/paypal/return',
         cancel_url => 'https://example.com/paypal/cancel',
+        brand_name => 'My Shop',
     );
 
     # Redirect the buyer here:
@@ -197,6 +196,119 @@ Returns a L<WWW::PayPal::API::Subscriptions> controller for creating and
 managing per-user recurring subscriptions.
 
 =cut
+
+sub js_sdk_url {
+    my ($self, %args) = @_;
+    croak 'client_id required' unless $self->client_id;
+
+    my %p = (
+        'client-id' => $self->client_id,
+        intent      => lc($args{intent} // 'capture'),
+    );
+    $p{currency}     = uc $args{currency}     if $args{currency};
+    $p{locale}       = $args{locale}          if $args{locale};
+    $p{'disable-funding'} = _join_list($args{disable_funding}) if $args{disable_funding};
+    $p{'enable-funding'}  = _join_list($args{enable_funding})  if $args{enable_funding};
+    $p{components}   = _join_list($args{components} // ['buttons']);
+    $p{vault}        = 'true' if $args{vault};
+    $p{'merchant-id'}    = $args{merchant_id}    if $args{merchant_id};
+    $p{'buyer-country'}  = $args{buyer_country}  if $args{buyer_country} && $self->sandbox;
+    $p{debug}        = 'true' if $args{debug};
+
+    # Extra opaque params (e.g. data-partner-attribution-id is an HTML attr,
+    # not a URL param, so we don't mix those in).
+    if (my $extra = $args{params}) {
+        $p{$_} = $extra->{$_} for keys %$extra;
+    }
+
+    my $qs = join('&',
+        map { _uri_escape($_) . '=' . _uri_escape($p{$_}) }
+        sort grep { defined $p{$_} } keys %p
+    );
+    return 'https://www.paypal.com/sdk/js?' . $qs;
+}
+
+=method js_sdk_url
+
+    my $url = $pp->js_sdk_url(
+        currency => 'EUR',
+        intent   => 'capture',           # or 'authorize' / 'subscription'
+        # optional:
+        locale          => 'de_DE',
+        components      => ['buttons'],  # or 'buttons,funding-eligibility'
+        disable_funding => ['credit', 'card'],
+        vault           => 1,            # required for subscriptions
+        merchant_id     => '...',        # multi-seller / partner flows
+        buyer_country   => 'DE',         # sandbox only
+        debug           => 1,
+    );
+
+Builds the PayPal JS SDK script URL with the given parameters, using this
+client's C<client_id>. For subscriptions, pass C<< intent => 'subscription' >>
+and C<< vault => 1 >>.
+
+=method js_sdk_script_tag
+
+    my $html = $pp->js_sdk_script_tag(currency => 'EUR');
+    # -> <script src="https://www.paypal.com/sdk/js?client-id=...&amp;currency=EUR&amp;..."></script>
+
+Returns a ready-to-render HTML C<< <script> >> tag for the JS SDK, HTML-
+escaped. Use this in your Catalyst / Mojolicious / whatever template to drop
+the SDK onto the page. All arguments are forwarded to L</js_sdk_url>.
+
+Typical integration (server-side order creation, client-side approval):
+
+    # in your template
+    [% pp.js_sdk_script_tag(currency => 'EUR') %]
+    <div id="paypal-button"></div>
+    <script>
+    paypal.Buttons({
+      createOrder: function() {
+        return fetch('/paypal/create', {method:'POST'})
+          .then(function(r){ return r.json() })
+          .then(function(d){ return d.id });
+      },
+      onApprove: function(data) {
+        return fetch('/paypal/capture/' + data.orderID, {method:'POST'})
+          .then(function(r){ return r.json() })
+          .then(function(d){ window.location = '/thanks?o=' + d.id });
+      }
+    }).render('#paypal-button');
+    </script>
+
+    # in your controller:
+    # POST /paypal/create  -> $pp->orders->checkout(...); return {id => $o->id}
+    # POST /paypal/capture/:id -> $pp->orders->capture($id); return {id => ...}
+
+=cut
+
+sub js_sdk_script_tag {
+    my ($self, %args) = @_;
+    my $url = $self->js_sdk_url(%args);
+    return '<script src="' . _html_escape($url) . '"></script>';
+}
+
+sub _join_list {
+    my ($v) = @_;
+    return ref $v eq 'ARRAY' ? join(',', @$v) : $v;
+}
+
+sub _uri_escape {
+    my ($s) = @_;
+    $s = '' unless defined $s;
+    $s =~ s/([^A-Za-z0-9\-._~])/sprintf('%%%02X', ord($1))/ge;
+    return $s;
+}
+
+sub _html_escape {
+    my ($s) = @_;
+    $s = '' unless defined $s;
+    $s =~ s/&/&amp;/g;
+    $s =~ s/</&lt;/g;
+    $s =~ s/>/&gt;/g;
+    $s =~ s/"/&quot;/g;
+    return $s;
+}
 
 =seealso
 

@@ -25,14 +25,23 @@ my $pp = WWW::PayPal->new(
     sandbox   => 1,                      # default: 0 (live)
 );
 
-# Create an order (replaces SetExpressCheckout)
-my $order = $pp->orders->create(
-    intent         => 'CAPTURE',
-    purchase_units => [{
-        amount => { currency_code => 'EUR', value => '42.00' },
-    }],
+# Create an order — one-liner Express Checkout replacement
+my $order = $pp->orders->checkout(
+    amount     => '42.00',
+    currency   => 'EUR',
     return_url => 'https://example.com/paypal/return',
     cancel_url => 'https://example.com/paypal/cancel',
+
+    # all optional:
+    brand_name      => 'My Shop',
+    locale          => 'de-DE',
+    invoice_id      => 'INV-2026-0042',
+    custom_id       => 'user-123',
+    soft_descriptor => 'MYSHOP',
+    description     => 'Ticket XYZ',
+    items => [
+        { name => 'Ticket', quantity => 1, unit_amount => '42.00', sku => 'T1' },
+    ],
 );
 
 # Redirect the buyer here:
@@ -52,6 +61,30 @@ my $refund = $pp->payments->refund($captured->capture_id,
     amount => { currency_code => 'EUR', value => '10.00' },
 );
 ```
+
+## PayPal JS SDK (client-side Buttons)
+
+For a Buttons-on-the-page flow (instead of a full-page redirect), drop the
+official PayPal JS SDK into your template and let `paypal.Buttons` call back
+to your server:
+
+```perl
+# in your template (Catalyst / Mojolicious / Template::Toolkit / ...)
+[% pp.js_sdk_script_tag(currency => 'EUR') %]
+<div id="paypal-button"></div>
+<script>
+paypal.Buttons({
+  createOrder: () => fetch('/paypal/create', {method:'POST'})
+    .then(r => r.json()).then(d => d.id),
+  onApprove:   d => fetch('/paypal/capture/' + d.orderID, {method:'POST'})
+    .then(r => r.json()).then(x => location = '/thanks?o=' + x.id),
+}).render('#paypal-button');
+</script>
+```
+
+Server routes call `$pp->orders->checkout(...)` (returns `{id => ...}`) and
+`$pp->orders->capture($id)`. For subscription buttons pass
+`intent => 'subscription', vault => 1` to `js_sdk_script_tag`.
 
 ## Recurring subscriptions
 

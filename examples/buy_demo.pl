@@ -94,13 +94,12 @@ get '/buy' => sub {
     my $currency = $c->param('currency') || $opt{currency};
 
     my $order = eval {
-        $pp->orders->create(
-            intent         => 'CAPTURE',
-            purchase_units => [{
-                amount => { currency_code => $currency, value => $amount },
-            }],
+        $pp->orders->checkout(
+            amount     => $amount,
+            currency   => $currency,
             return_url => $opt{'return-host'} . '/return',
             cancel_url => $opt{'return-host'} . '/cancel',
+            brand_name => 'WWW::PayPal demo',
         );
     };
     if (my $err = $@) {

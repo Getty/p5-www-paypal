@@ -147,4 +147,79 @@ my $captured;
     is $p->id, 'P-STUB', 'wrapped plan id';
 }
 
+# --- checkout() convenience builder ---
+{
+    my $captured_body;
+    no warnings 'redefine';
+    local *WWW::PayPal::API::Orders::call_operation = sub {
+        my ($self, $op, %args) = @_;
+        $captured_body = $args{body};
+        return {
+            id     => 'ORDER-STUB',
+            status => 'CREATED',
+            intent => $args{body}{intent},
+            links  => [{ rel => 'payer-action', href => 'https://pp/ap' }],
+        };
+    };
+
+    my $o = $pp->orders->checkout(
+        amount      => '9.99',
+        currency    => 'EUR',
+        return_url  => 'https://x/r',
+        cancel_url  => 'https://x/c',
+        brand_name  => 'Amiga Event',
+        locale      => 'de-DE',
+        invoice_id  => 'INV-1',
+        custom_id   => 'user-42',
+        description => 'Ticket',
+        items => [
+            { name => 'Ticket', quantity => 2, unit_amount => '4.00', sku => 'T' },
+        ],
+    );
+
+    is $captured_body->{intent}, 'CAPTURE', 'default intent capture';
+    is $captured_body->{purchase_units}[0]{amount}{value}, '9.99', 'pu amount';
+    is $captured_body->{purchase_units}[0]{amount}{currency_code}, 'EUR', 'pu ccy';
+    is $captured_body->{purchase_units}[0]{amount}{breakdown}{item_total}{value},
+        '8.00', 'item_total breakdown auto-filled';
+    is $captured_body->{purchase_units}[0]{items}[0]{name}, 'Ticket', 'item name';
+    is $captured_body->{purchase_units}[0]{items}[0]{quantity}, '2', 'item qty';
+    is $captured_body->{purchase_units}[0]{invoice_id},  'INV-1',   'invoice_id';
+    is $captured_body->{purchase_units}[0]{custom_id},   'user-42', 'custom_id';
+    is $captured_body->{application_context}{brand_name},  'Amiga Event', 'brand';
+    is $captured_body->{application_context}{locale},      'de-DE',       'locale';
+    is $captured_body->{application_context}{return_url},  'https://x/r', 'return';
+    is $captured_body->{application_context}{user_action}, 'PAY_NOW',     'user_action';
+    is $o->id, 'ORDER-STUB', 'wrapped order id';
+
+    eval { $pp->orders->checkout(currency => 'EUR', return_url => 'x', cancel_url => 'x') };
+    like $@, qr/amount required/, 'amount missing dies';
+}
+
+# --- js_sdk_url / js_sdk_script_tag ---
+{
+    my $url = $pp->js_sdk_url(currency => 'EUR', intent => 'capture');
+    like $url, qr{^https://www\.paypal\.com/sdk/js\?}, 'sdk url base';
+    like $url, qr/client-id=test/,  'sdk client-id';
+    like $url, qr/currency=EUR/,    'sdk currency';
+    like $url, qr/intent=capture/,  'sdk intent lower';
+    like $url, qr/components=buttons/, 'sdk default components';
+
+    my $sub_url = $pp->js_sdk_url(intent => 'subscription', vault => 1);
+    like $sub_url, qr/intent=subscription/, 'sdk sub intent';
+    like $sub_url, qr/vault=true/,          'sdk vault';
+
+    my $df = $pp->js_sdk_url(
+        currency        => 'EUR',
+        disable_funding => ['credit', 'card'],
+    );
+    like $df, qr/disable-funding=credit%2Ccard/, 'disable_funding joined + escaped';
+
+    my $tag = $pp->js_sdk_script_tag(currency => 'EUR');
+    like $tag, qr{^<script src="https://www\.paypal\.com/sdk/js\?[^"]+"></script>$},
+        'script tag shape';
+    like $tag, qr/&amp;/, 'ampersands escaped';
+    unlike $tag, qr/&(?!amp;|lt;|gt;|quot;)/, 'no raw ampersands';
+}
+
 done_testing;

@@ -1,6 +1,18 @@
 Revision history for WWW-PayPal
 
 {{$NEXT}}
+    - WWW::PayPal::API::Orders: new checkout() convenience method — the
+      modern Express Checkout one-liner. Builds purchase_units +
+      application_context from flat args (amount, currency, return_url,
+      cancel_url, + optional brand_name, locale, items[], shipping,
+      invoice_id, custom_id, soft_descriptor, description, reference_id,
+      shipping_preference, user_action). Auto-fills amount.breakdown.item_total
+      when items are present.
+    - WWW::PayPal: new js_sdk_url() and js_sdk_script_tag() helpers for
+      dropping the PayPal JS SDK into a Catalyst/Mojolicious/etc. template.
+      Supports currency, intent, locale, components, disable_funding /
+      enable_funding, vault (for subscription buttons), merchant_id,
+      buyer_country (sandbox), debug. HTML output is properly escaped.
 
 0.001     2026-04-15 19:41:41Z
     - Initial release

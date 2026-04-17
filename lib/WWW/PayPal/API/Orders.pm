@@ -72,6 +72,114 @@ sub _wrap {
     return WWW::PayPal::Order->new(client => $self->client, data => $data);
 }
 
+sub checkout {
+    my ($self, %args) = @_;
+
+    croak 'amount required'     unless defined $args{amount};
+    croak 'currency required'   unless defined $args{currency};
+    croak 'return_url required' unless defined $args{return_url};
+    croak 'cancel_url required' unless defined $args{cancel_url};
+
+    my $currency = $args{currency};
+    my $amount   = $args{amount};
+
+    my $pu = {
+        amount => { currency_code => $currency, value => $amount },
+    };
+    $pu->{description}     = $args{description}     if defined $args{description};
+    $pu->{invoice_id}      = $args{invoice_id}      if defined $args{invoice_id};
+    $pu->{custom_id}       = $args{custom_id}       if defined $args{custom_id};
+    $pu->{soft_descriptor} = $args{soft_descriptor} if defined $args{soft_descriptor};
+    $pu->{reference_id}    = $args{reference_id}    if defined $args{reference_id};
+
+    if ($args{items} && @{ $args{items} }) {
+        my @items;
+        my $item_total = 0;
+        for my $i (@{ $args{items} }) {
+            my $unit = $i->{unit_amount} // $i->{price}
+                or croak 'item unit_amount required';
+            my $qty  = $i->{quantity} // 1;
+            push @items, {
+                name        => $i->{name} // croak('item name required'),
+                quantity    => "$qty",
+                unit_amount => {
+                    currency_code => $i->{currency_code} // $currency,
+                    value         => "$unit",
+                },
+                (defined $i->{sku}         ? (sku         => $i->{sku})         : ()),
+                (defined $i->{description} ? (description => $i->{description}) : ()),
+                (defined $i->{category}    ? (category    => $i->{category})    : ()),
+            };
+            $item_total += $unit * $qty;
+        }
+        $pu->{items} = \@items;
+        # PayPal requires a breakdown when items are present
+        $pu->{amount}{breakdown} = {
+            item_total => {
+                currency_code => $currency,
+                value         => sprintf('%.2f', $item_total),
+            },
+        };
+    }
+
+    $pu->{shipping} = $args{shipping} if $args{shipping};
+
+    my %create = (
+        intent         => $args{intent} // 'CAPTURE',
+        purchase_units => [$pu],
+        return_url     => $args{return_url},
+        cancel_url     => $args{cancel_url},
+    );
+    for my $k (qw(brand_name locale user_action shipping_preference payer)) {
+        $create{$k} = $args{$k} if defined $args{$k};
+    }
+
+    return $self->create(%create);
+}
+
+=method checkout
+
+    my $order = $pp->orders->checkout(
+        amount     => '9.99',
+        currency   => 'EUR',
+        return_url => 'https://example.com/paypal/return',
+        cancel_url => 'https://example.com/paypal/cancel',
+
+        # optional
+        intent              => 'CAPTURE',       # or 'AUTHORIZE'
+        brand_name          => 'Amiga Event',
+        locale              => 'de-DE',
+        user_action         => 'PAY_NOW',       # default
+        shipping_preference => 'NO_SHIPPING',   # or GET_FROM_FILE / SET_PROVIDED_ADDRESS
+        description         => 'Ticket XYZ',
+        invoice_id          => 'INV-2026-0042',
+        custom_id           => 'user-123',
+        soft_descriptor     => 'AMIGAEVENT',
+        reference_id        => 'cart-42',
+        items => [
+            { name => 'Ticket', quantity => 1, unit_amount => '9.99', sku => 'T1' },
+        ],
+        shipping => {
+            name    => { full_name => 'Jane Doe' },
+            address => { country_code => 'DE', postal_code => '10115', ... },
+        },
+    );
+
+    $c->redirect_to($order->approve_url);
+
+High-level convenience wrapper around L</create> — the modern replacement
+for the NVP ExpressCheckout flow. Builds the C<purchase_units> and
+C<application_context> structures for the common single-item checkout so
+callers don't have to.
+
+When C<items> is given, the amount C<breakdown.item_total> is filled in
+automatically (PayPal requires it as soon as items are present).
+
+For multi-unit orders, multi-seller orders, or anything else outside this
+happy path, use L</create> directly.
+
+=cut
+
 sub create {
     my ($self, %args) = @_;
 
