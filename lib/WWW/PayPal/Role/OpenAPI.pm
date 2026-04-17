@@ -6,7 +6,7 @@ use Moo::Role;
 use Carp qw(croak);
 use Log::Any qw($log);
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 =head1 SYNOPSIS
 

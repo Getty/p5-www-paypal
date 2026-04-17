@@ -1,5 +1,7 @@
 Revision history for WWW-PayPal
 
+{{$NEXT}}
+
 0.002     2026-04-17 02:45:51Z
     - WWW::PayPal::API::Orders: new checkout() convenience method — the
       modern Express Checkout one-liner. Builds purchase_units +

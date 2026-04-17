@@ -11,7 +11,7 @@ use WWW::PayPal::API::Plans;
 use WWW::PayPal::API::Subscriptions;
 use namespace::clean;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 =head1 SYNOPSIS
 
