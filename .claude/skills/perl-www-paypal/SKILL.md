@@ -1,6 +1,6 @@
 ---
 name: perl-www-paypal
-description: "WWW::PayPal — Perl client for the PayPal REST API. Covers one-off product purchases (Orders v2) and recurring monthly subscriptions (Billing Subscriptions v1), plus refunds."
+description: Use when talking to PayPal from Perl — WWW::PayPal for one-off purchases (Orders v2), recurring subscriptions (Billing v1), and refunds.
 user-invocable: false
 allowed-tools: Read, Grep, Glob
 model: sonnet

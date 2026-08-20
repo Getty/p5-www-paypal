@@ -6,8 +6,8 @@ allowed-tools: Read, Edit, Write, Bash, Glob, Grep
 briefing:
   skills:
     - www-paypal-core
-    - perl-core
-    - karr
+    - getty-perl-core
+    - kanban-issues-karr-cli
 ---
 
 You are the www-paypal-test-writer for **WWW::PayPal**.

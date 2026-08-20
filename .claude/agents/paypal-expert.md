@@ -7,7 +7,7 @@ briefing:
   skills:
     - paypal-integration
     - perl-www-paypal
-    - karr
+    - kanban-issues-karr-cli
 ---
 
 You are the paypal-expert: the PayPal **application layer** specialist.

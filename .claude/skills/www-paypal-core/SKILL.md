@@ -1,6 +1,6 @@
 ---
 name: www-paypal-core
-description: "Internal architecture of the WWW::PayPal distribution — the controller/entity split, the pre-computed operationId dispatch tables, the OAuth2 token cache, and the invariants an implementer must not break. For contributors to the distribution itself, not for consumers of the library."
+description: Load before editing the WWW::PayPal distribution itself — the controller/entity split, the operationId dispatch tables, the OAuth2 token cache, and the invariants to keep.
 user-invocable: false
 allowed-tools: Read, Grep, Glob
 model: sonnet
@@ -137,5 +137,5 @@ Full request/response dump for anything using the default transport.
 - Skill `perl-www-paypal` — consumer-facing API surface (what the library looks
   like from outside). Keep it in sync when the public API changes.
 - Skill `paypal-integration` — PayPal's own domain model and flow rules.
-- Skill `perl-moo`, `perl-release-author-getty`, `perl-release-dist-ini` — Moo
+- Skill `getty-perl-moo`, `getty-perl-release-author-getty`, `perl-release-dist-ini` — Moo
   patterns, POD conventions (`=attr`/`=method`/`=seealso`), release workflow.

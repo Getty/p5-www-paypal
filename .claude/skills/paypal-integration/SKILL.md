@@ -1,6 +1,6 @@
 ---
 name: paypal-integration
-description: "PayPal application layer — checkout and subscription state machines, webhooks, idempotency, money handling, refunds and disputes, sandbox/live discipline. Language- and library-agnostic: covers what an application built on PayPal must get right, not how to call the API. Use when designing or reviewing a payment flow, a subscription lifecycle, a webhook receiver, a billing data model, or when debugging why PayPal and the app disagree about a payment."
+description: Use when designing or reviewing a payment flow, subscription lifecycle, webhook receiver or billing data model, or when PayPal and the app disagree about a payment.
 user-invocable: false
 allowed-tools: Read, Grep, Glob
 model: sonnet

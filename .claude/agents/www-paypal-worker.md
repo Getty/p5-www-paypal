@@ -6,11 +6,11 @@ allowed-tools: Read, Edit, Write, Bash, Glob, Grep
 briefing:
   skills:
     - www-paypal-core
-    - perl-core
-    - perl-moo
+    - getty-perl-core
+    - getty-perl-moo
     - paypal-integration
-    - perl-release-author-getty
-    - karr
+    - getty-perl-release-author-getty
+    - kanban-issues-karr-cli
 ---
 
 You are the www-paypal-worker for **WWW::PayPal**, a Perl client for the PayPal
