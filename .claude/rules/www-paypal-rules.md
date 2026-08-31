@@ -52,7 +52,7 @@ error handling, `cpanfile`, `dist.ini`. Prose docs and `Changes` notes are not.
 ## Coordination — karr board (always in scope)
 
 Ticket coordination is the orchestrating agent's job, so `karr` is always in scope —
-don't invoke the `karr` skill first, just use it. Git-native kanban; state lives in
+don't invoke the `kanban-issues-karr-cli` skill first, just use it. Git-native kanban; state lives in
 `refs/karr/*`; this repo has its own board.
 
 - `karr list --compact` / `karr board` — open work · `karr show ID` — detail
@@ -98,7 +98,7 @@ says to handle a specific one.
 ## Conventions — reference, don't restate
 
 Perl house style, Moo patterns, POD directives, `cpanfile` pinning, the next-version
-scheme and the `Changes`/`{{$NEXT}}` handling live in skills `perl-core`, `perl-moo`,
-`perl-release-author-getty` and `perl-release-dist-ini`. The distribution's own
+scheme and the `Changes`/`{{$NEXT}}` handling live in skills `getty-perl-core`, `getty-perl-moo`,
+`getty-perl-release-author-getty` and `perl-release-dist-ini`. The distribution's own
 architecture is skill `www-paypal-core`; PayPal's domain model is `paypal-integration`.
 Do not duplicate any of that content here.
