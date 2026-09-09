@@ -1,0 +1,18 @@
+---
+class: standard
+completed: 2026-09-09T11:01:23Z
+created: 2026-08-16T17:46:54Z
+id: 2
+priority: medium
+started: 2026-09-09T10:52:05Z
+status: done
+tags:
+- api
+- idempotency
+title: PayPal-Request-Id idempotency support
+updated: 2026-09-09T11:01:23Z
+---
+
+Role::HTTP::request already accepts a headers argument, but nothing surfaces PayPal-Request-Id. Retried creates/captures can produce duplicate objects. Decide: pass-through named arg on the high-level methods (orders->create, orders->checkout, subscriptions->create) vs. a client-level callback. Document that the value must be deterministic per logical operation.
+
+2026-09-09 11:01 Added optional request_id to call_operation forwarded as the PayPal Request Id header merged with any caller headers. Threaded through create and capture methods Orders create checkout capture authorize Subscriptions create capture Products create Plans create create_monthly Payments refund. All optional no incompatible signature change backward compatible. New offline test t idempotency fails without the plumbing. prove green 92 tests.
