@@ -25,6 +25,32 @@ is $orders->_resolve_path($op->{path}, { id => 'ABC' }),
 eval { $orders->_resolve_path('/a/{missing}', {}) };
 like $@, qr/missing path parameter/, 'missing param dies';
 
+# --- missing path parameter must croak through the PUBLIC dispatch path ---
+# (ticket #4) The test above only exercises the private _resolve_path helper
+# with a synthetic path. The following reach the same guard through real usage.
+# All croak during path resolution, *before* WWW::PayPal::Role::HTTP::request
+# is ever called, so no OAuth2 token is fetched and no network I/O happens.
+
+# 1. Via call_operation with a real operation whose path has a placeholder.
+#    The empty `path` arg leaves {id} unsubstituted -> _resolve_path croaks.
+eval { $orders->call_operation('orders.capture', path => {}) };
+like $@, qr/missing path parameter 'id'/,
+    'call_operation croaks on missing path param, naming the placeholder';
+
+# same guard when the key is present but undef (the `defined` branch)
+eval { $orders->call_operation('orders.capture', path => { id => undef }) };
+like $@, qr/missing path parameter 'id'/,
+    'call_operation croaks on undef path param';
+
+# 2. Via a real controller method. NOTE: every domain method in
+#    lib/WWW/PayPal/API/*.pm guards its required id itself (e.g. Orders::capture
+#    does `croak 'order id required' unless $id`) *before* dispatching, so a
+#    missing id is caught at the controller layer and never reaches
+#    _resolve_path. This asserts that real, user-facing guard.
+eval { $orders->capture() };    # id omitted
+like $@, qr/order id required/,
+    'orders->capture croaks when id omitted (controller guard, pre-dispatch)';
+
 eval { $orders->get_operation('does.not.exist') };
 like $@, qr/unknown operationId/, 'unknown op dies';
 
