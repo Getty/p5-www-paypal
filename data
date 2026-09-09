@@ -1,0 +1,20 @@
+---
+class: standard
+completed: 2026-09-09T11:04:22Z
+created: 2026-08-16T17:47:00Z
+id: 3
+priority: low
+started: 2026-09-09T10:55:59Z
+status: done
+tags:
+- maint
+- openapi
+title: maint/ script to regenerate operation tables from the upstream spec
+updated: 2026-09-09T11:04:22Z
+---
+
+Operation tables are hand-maintained by design (no runtime codegen, no build-time codegen in lib/). A maint/ helper that reads a paypal-rest-api-specifications JSON and prints the operationId => {method, path} hash for one controller would remove the transcription errors without touching the architecture.
+
+2026-09-09 11:04 Added maint regen-operations.pl a standalone tool that fetches PayPal OpenAPI specs extracts operationId to method path per controller prints ready to paste tables and diffs against the current builders. STDOUT only never edits lib. Supports offline spec-dir only base-url help graceful fetch failure. Verified live and offline. Surfaces spec vs controller differences for maintainer operationId naming divergence and new upstream operations see report. Commit HASHHERE.
+
+2026-09-09 11:04 Commit hash is 7cd0b04.
