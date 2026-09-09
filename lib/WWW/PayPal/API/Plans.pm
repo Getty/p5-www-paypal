@@ -85,7 +85,10 @@ sub create {
     $body{taxes}       = $args{taxes}       if $args{taxes};
     $body{quantity_supported} = $args{quantity_supported} if defined $args{quantity_supported};
 
-    my $data = $self->call_operation('billing.plans.create', body => \%body);
+    my $data = $self->call_operation('billing.plans.create',
+        body => \%body,
+        (defined $args{request_id} ? (request_id => $args{request_id}) : ()),
+    );
     return $self->_wrap($data);
 }
 
@@ -99,7 +102,9 @@ sub create {
     );
 
 Creates a plan with full control over the billing cycles and payment
-preferences. See PayPal's docs for the full schema.
+preferences. See PayPal's docs for the full schema. Accepts an optional
+C<request_id> (C<PayPal-Request-Id> header) for idempotent creation;
+L</create_monthly> forwards its own C<request_id> here.
 
 =cut
 
@@ -137,6 +142,7 @@ sub create_monthly {
         name           => $args{name},
         description    => $args{description},
         billing_cycles => \@cycles,
+        (defined $args{request_id} ? (request_id => $args{request_id}) : ()),
     );
 }
 

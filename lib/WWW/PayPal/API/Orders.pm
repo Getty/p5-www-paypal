@@ -149,6 +149,7 @@ sub checkout {
     for my $k (qw(brand_name locale user_action shipping_preference payer)) {
         $create{$k} = $args{$k} if defined $args{$k};
     }
+    $create{request_id} = $args{request_id} if defined $args{request_id};
 
     return $self->create(%create);
 }
@@ -163,6 +164,7 @@ sub checkout {
 
         # optional
         intent              => 'CAPTURE',       # or 'AUTHORIZE'
+        request_id          => 'cart-42-try1',  # idempotency (PayPal-Request-Id)
         brand_name          => 'Amiga Event',
         locale              => 'de-DE',
         user_action         => 'PAY_NOW',       # default
@@ -232,7 +234,10 @@ sub create {
 
     $body->{payer} = $args{payer} if $args{payer};
 
-    my $data = $self->call_operation('orders.create', body => $body);
+    my $data = $self->call_operation('orders.create',
+        body => $body,
+        (defined $args{request_id} ? (request_id => $args{request_id}) : ()),
+    );
     return $self->_wrap($data);
 }
 
@@ -247,6 +252,10 @@ sub create {
 
 Creates an order and returns a L<WWW::PayPal::Order>. The buyer must be
 redirected to C<< $order->approve_url >> to approve the payment.
+
+Pass an optional C<request_id> (a deterministic value you choose) to send a
+C<PayPal-Request-Id> header — PayPal then replays the original order on a
+retry instead of creating a duplicate.
 
 =cut
 
@@ -272,6 +281,7 @@ sub capture {
     my $data = $self->call_operation('orders.capture',
         path => { id => $id },
         body => $args{body} || {},
+        (defined $args{request_id} ? (request_id => $args{request_id}) : ()),
     );
     return $self->_wrap($data);
 }
@@ -281,7 +291,8 @@ sub capture {
     my $order = $pp->orders->capture($id);
 
 Captures an approved order. Returns the updated L<WWW::PayPal::Order> with a
-completed capture attached.
+completed capture attached. Accepts an optional C<request_id> for an
+idempotent (retry-safe) capture, sent as the C<PayPal-Request-Id> header.
 
 =cut
 
@@ -291,6 +302,7 @@ sub authorize {
     my $data = $self->call_operation('orders.authorize',
         path => { id => $id },
         body => $args{body} || {},
+        (defined $args{request_id} ? (request_id => $args{request_id}) : ()),
     );
     return $self->_wrap($data);
 }

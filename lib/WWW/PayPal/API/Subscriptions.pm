@@ -98,7 +98,10 @@ sub create {
         if $args{shipping_preference};
     $body{application_context} = \%ctx if %ctx;
 
-    my $data = $self->call_operation('billing.subscriptions.create', body => \%body);
+    my $data = $self->call_operation('billing.subscriptions.create',
+        body => \%body,
+        (defined $args{request_id} ? (request_id => $args{request_id}) : ()),
+    );
     return $self->_wrap($data);
 }
 
@@ -115,6 +118,10 @@ sub create {
 Creates a subscription and returns a L<WWW::PayPal::Subscription>. The buyer
 must be redirected to L<< approve_url|WWW::PayPal::Subscription/approve_url >>
 before PayPal starts billing.
+
+Pass an optional C<request_id> (sent as the C<PayPal-Request-Id> header) to
+make the create retry-safe: PayPal replays the original subscription instead
+of creating a duplicate.
 
 =cut
 
@@ -171,6 +178,7 @@ sub capture {
     return $self->call_operation('billing.subscriptions.capture',
         path => { id => $id },
         body => $body,
+        (defined $args{request_id} ? (request_id => $args{request_id}) : ()),
     );
 }
 

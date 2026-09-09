@@ -65,7 +65,10 @@ sub create {
     for my $k (qw(description category image_url home_url id)) {
         $body{$k} = $args{$k} if defined $args{$k};
     }
-    my $data = $self->call_operation('catalogs.products.create', body => \%body);
+    my $data = $self->call_operation('catalogs.products.create',
+        body => \%body,
+        (defined $args{request_id} ? (request_id => $args{request_id}) : ()),
+    );
     return $self->_wrap($data);
 }
 
@@ -76,6 +79,8 @@ sub create {
     );
 
 Creates a product. C<type> is one of C<PHYSICAL>, C<DIGITAL>, C<SERVICE>.
+Accepts an optional C<request_id> (C<PayPal-Request-Id> header) for
+idempotent, retry-safe creation.
 
 =cut
 

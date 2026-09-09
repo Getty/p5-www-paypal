@@ -115,11 +115,20 @@ sub call_operation {
     my $op = $self->get_operation($operation_id);
     my $path = $self->_resolve_path($op->{path}, $args{path});
     $log->debugf('PayPal op %s -> %s %s', $operation_id, $op->{method}, $path);
+
+    # Idempotency: a PayPal-Request-Id header makes create/capture retries
+    # replay the original result instead of creating a second object. Merge
+    # it into any headers the caller already passed.
+    my %headers = %{ $args{headers} || {} };
+    $headers{'PayPal-Request-Id'} = $args{request_id}
+        if defined $args{request_id};
+
     return $self->client->request(
         $op->{method},
         $path,
         (defined $args{body}  ? (body  => $args{body})  : ()),
         (defined $args{query} ? (query => $args{query}) : ()),
+        (%headers ? (headers => \%headers) : ()),
         (defined $op->{content_type}
             ? (content_type => $op->{content_type}) : ()),
     );
@@ -134,6 +143,11 @@ sub call_operation {
 
 Dispatches an OpenAPI operation by C<operationId>, substitutes path
 parameters, and returns the decoded JSON response.
+
+The optional C<request_id> argument is forwarded as a C<PayPal-Request-Id>
+header for idempotency (retry-safe create/capture); it is merged with any
+C<headers> HashRef also passed. When omitted, no such header is sent and the
+request is unchanged.
 
 =cut
 

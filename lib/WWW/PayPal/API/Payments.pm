@@ -77,6 +77,7 @@ sub refund {
     my $data = $self->call_operation('captures.refund',
         path => { capture_id => $capture_id },
         body => $body,
+        (defined $args{request_id} ? (request_id => $args{request_id}) : ()),
     );
     return WWW::PayPal::Refund->new(client => $self->client, data => $data);
 }
@@ -89,7 +90,9 @@ sub refund {
         note_to_payer  => 'Sorry!',                                      # optional
     );
 
-Refunds a capture. Omit C<amount> to refund in full.
+Refunds a capture. Omit C<amount> to refund in full. Accepts an optional
+C<request_id> (C<PayPal-Request-Id> header) so a retried refund replays the
+original instead of refunding twice.
 
 =cut
 
