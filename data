@@ -1,0 +1,17 @@
+---
+class: standard
+completed: 2026-09-09T11:01:47Z
+created: 2026-08-16T17:47:06Z
+id: 4
+priority: medium
+started: 2026-09-09T10:50:15Z
+status: done
+tags:
+- tests
+title: 't/openapi.t coverage: missing path parameter must croak'
+updated: 2026-09-09T11:01:47Z
+---
+
+_resolve_path croaks on a missing placeholder, which is the guard against sending a literal {id} to PayPal. Assert it. Same for an unknown operationId via get_operation. Offline, no network.
+
+2026-09-09 11:01 Added public path level coverage for the missing path parameter croak call_operation orders capture with empty path and with id undef both croak missing path parameter id proving the guard fires through dispatch not just the private helper. Also a controller method guard test. No network needed the croak precedes request. prove green. Commit e65c552. Note every id taking controller method guards its arg with its own croak before dispatch so the resolve path guard is defense in depth.
