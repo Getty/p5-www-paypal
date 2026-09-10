@@ -156,6 +156,17 @@ isa_ok $pp->webhooks, 'WWW::PayPal::API::Webhooks', 'webhooks controller';
     isa_ok $w, 'WWW::PayPal::Webhook', 'create returns entity';
     is $w->id, 'WH-NEW', 'created webhook id';
 
+    # R1: an already-wrapped { name => ... } hashref (PayPal's own doc form)
+    # passes through untouched and may be mixed with bare names — never
+    # double-wrapped into { name => { name => ... } }.
+    $pp->webhooks->create(
+        url         => 'https://example.com/paypal/webhook',
+        event_types => [ CHECKOUT_ORDER_APPROVED, { name => 'PAYMENT.CAPTURE.COMPLETED' } ],
+    );
+    is_deeply $sent->{body}{event_types},
+        [ { name => 'CHECKOUT.ORDER.APPROVED' }, { name => 'PAYMENT.CAPTURE.COMPLETED' } ],
+        'bare and pre-wrapped {name=>...} forms mix; no double-wrapping';
+
     eval { $pp->webhooks->create( url => 'https://x' ) };
     like $@, qr/event_types required/, 'create without event_types dies';
 }

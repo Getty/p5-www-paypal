@@ -175,7 +175,7 @@ sub create {
 
     my %body = (
         url         => $args{url},
-        event_types => [ map { { name => $_ } } @{ $args{event_types} } ],
+        event_types => [ map { ref $_ eq 'HASH' ? $_ : { name => $_ } } @{ $args{event_types} } ],
     );
     return $self->_wrap($self->call_operation('notifications.webhooks.create', body => \%body));
 }
@@ -187,10 +187,12 @@ sub create {
         event_types => [ 'PAYMENT.CAPTURE.COMPLETED', 'CHECKOUT.ORDER.APPROVED' ],
     );
 
-Registers a webhook endpoint. Pass C<event_types> as plain event-name strings
-(or L<WWW::PayPal::WebhookEvents> constants); this method wraps each into
-PayPal's required C<< { name => ... } >> shape for you. Returns a
-L<WWW::PayPal::Webhook>.
+Registers a webhook endpoint. Each C<event_types> element may be a plain
+event-name string (or a L<WWW::PayPal::WebhookEvents> constant), which this
+method wraps into PayPal's required C<< { name => ... } >> shape for you, B<or>
+an already-wrapped C<< { name => ... } >> HashRef as PayPal's own documentation
+shows it — those pass through untouched, so the two forms may be mixed freely
+in one list. Returns a L<WWW::PayPal::Webhook>.
 
 =cut
 
