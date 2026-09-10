@@ -1,0 +1,22 @@
+---
+claimed_at: 2026-09-10T03:56:55Z
+claimed_by: worker-c
+class: standard
+completed: 2026-09-10T03:56:55Z
+created: 2026-08-16T17:46:48Z
+id: 1
+priority: high
+started: 2026-09-10T03:48:27Z
+status: done
+tags:
+- webhooks
+- api
+title: Webhook signature verification + event helpers
+updated: 2026-09-10T03:56:55Z
+---
+
+The library covers the request side but nothing on the receiving side. paypal-integration makes webhooks the authoritative source of payment state, so every consumer currently hand-rolls verification. Missing: POST /v1/notifications/verify-webhook-signature, a helper that takes the raw body + headers + webhook_id, and the webhook CRUD operations (create/list/delete). Raw body must stay raw -- re-serialised JSON breaks the signature.
+
+2026-09-09 10:57 Assessed in Phase 2 batch and left open as a boundary. Webhook signature verification is security critical an unverified receiver effectively grants everyone premium. There is no webhook module yet so this adds a new public API surface that ships to downstream consumers hiplatform and goldmine per CLAUDE.md. It is explicitly the paypal expert domain and involves a design choice the PayPal verify webhook signature notifications endpoint versus local certificate verification plus the shape of the event helpers. Recommendation implement verification via the verify webhook signature operation add a Webhooks controller with a verify method taking the raw body the transmission headers and the webhook id returning SUCCESS or FAILURE and add event name helper constants from the domain skill event table. Needs maintainer and paypal expert sign off on the public API shape before implementing.
+
+2026-09-10 03:56 Implemented on branch webhooks-k1 (worktree .claude/worktrees/webhooks-k1), commits 96f6a11 (lib+POD) + d271375 (tests). NOT yet on main - bg-isolation forced a worktree; parent must integrate. New: API/Webhooks.pm (verify via verify-webhook-signature, raw-body spliced verbatim; create/list/get/delete), Webhook.pm entity, WebhookEvents.pm constants; webhooks attr wired into WWW::PayPal. prove -lr t/ = 125 tests green (t/webhooks.t 47). DECLINED(v2)+DENIED(v1) both included, verified vs PayPal event-names ref. Pending (not mine): doc-writer rips perl-www-paypal skill + Changes; paypal-expert review.
