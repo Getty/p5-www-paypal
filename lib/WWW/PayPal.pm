@@ -9,6 +9,7 @@ use WWW::PayPal::API::Payments;
 use WWW::PayPal::API::Products;
 use WWW::PayPal::API::Plans;
 use WWW::PayPal::API::Subscriptions;
+use WWW::PayPal::API::Webhooks;
 use namespace::clean;
 
 our $VERSION = '0.003';
@@ -194,6 +195,18 @@ has subscriptions => (
 
 Returns a L<WWW::PayPal::API::Subscriptions> controller for creating and
 managing per-user recurring subscriptions.
+
+=cut
+
+has webhooks => (
+    is      => 'lazy',
+    builder => sub { WWW::PayPal::API::Webhooks->new(client => $_[0]) },
+);
+
+=attr webhooks
+
+Returns a L<WWW::PayPal::API::Webhooks> controller for registering webhook
+endpoints and verifying the signature of incoming webhook events.
 
 =cut
 
