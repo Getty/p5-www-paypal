@@ -84,6 +84,96 @@ isa_ok $pp->webhooks, 'WWW::PayPal::API::Webhooks', 'webhooks controller';
 }
 
 # ---------------------------------------------------------------------------
+# (b2) ADVERSARIAL SPLICE REGRESSION (critical): raw_body carries s///
+#      replacement metacharacters ($1, \1, \g{x}, $&) AND an internal "}"
+#      that is not the final character. The current implementation is a
+#      plain (non-/e) s/\}\z/,"webhook_event":$raw_body}/, which is safe: a
+#      variable interpolated into a substitution replacement is inserted as
+#      inert text, never re-parsed for backreferences. A refactor onto
+#      s///e (raw_body's "$1"/"\1"/"$&" would be evaluated as the *real*
+#      capture variables — empty here, since the pattern has no groups —
+#      silently deleting them from the output), onto sprintf (a stray "%"
+#      convention or double-escaping bug), or onto substr-based splicing
+#      (anchoring on *a* "}" instead of the final one, or an off-by-one)
+#      would each stop the raw bytes from appearing byte-for-byte in the
+#      outgoing body. This test fails the moment that happens.
+# ---------------------------------------------------------------------------
+{
+    my $raw_body = qq({"note":"\$1 \\1 \\g{x} back\\\\slash \$&","id":"x","z":"}"});
+
+    # Fixture sanity: prove THIS test's own literal really carries the raw
+    # metacharacters rather than something having been interpolated away by
+    # accident. Every search term below is single-quoted (q(...)), so it can
+    # never itself be interpolated — a match here proves the bytes are
+    # genuinely present in $raw_body.
+    ok index($raw_body, q($1))    >= 0, 'fixture sanity: literal $1 present in raw_body';
+    ok index($raw_body, q(\1))    >= 0, 'fixture sanity: literal \1 present in raw_body';
+    ok index($raw_body, q(\g{x})) >= 0, 'fixture sanity: literal \g{x} present in raw_body';
+    ok index($raw_body, (chr(92) x 2).q(slash)) >= 0,
+        'fixture sanity: literal double-backslash before "slash" present in raw_body';
+    ok index($raw_body, q($&))    >= 0, 'fixture sanity: literal $& present in raw_body';
+    ok index($raw_body, q(") . q(z) . q(") . q(:) . q(") . q(}) . q(") . q(})) >= 0,
+        'fixture sanity: internal "}" (not the trailing one) present in raw_body';
+    is length($raw_body), 54, 'fixture sanity: raw_body is exactly the intended 54 raw bytes';
+
+    my $sent_body;
+    no warnings 'redefine';
+    local *WWW::PayPal::API::Webhooks::call_operation = sub {
+        my ($self, $op, %args) = @_;
+        $sent_body = $args{body};
+        return { verification_status => 'SUCCESS' };
+    };
+
+    my $ok = $pp->webhooks->verify(
+        webhook_id        => 'WH-CONFIG-1',
+        raw_body          => $raw_body,
+        transmission_id   => 'tid-2',
+        transmission_time => '2026-09-10T00:00:01Z',
+        transmission_sig  => 'c2ln==',
+        cert_url          => 'https://api.paypal.com/v1/notifications/certs/x',
+        auth_algo         => 'SHA256withRSA',
+    );
+
+    ok !ref $sent_body, 'adversarial body: request body is still a non-ref scalar';
+    ok index($sent_body, $raw_body) >= 0,
+        'adversarial body: raw bytes appear byte-for-byte, unaltered, in the outgoing body';
+    is $ok, 1, 'adversarial body: verify still resolves SUCCESS normally';
+}
+
+# ---------------------------------------------------------------------------
+# (b3) Non-ASCII / multibyte raw bytes survive the splice verbatim. A refactor
+#      that measures or slices by character count instead of byte count (a
+#      substr-based splice, or one that runs under `use utf8` assumptions, or
+#      one that decodes+re-encodes through JSON) could corrupt or shift a
+#      multibyte UTF-8 sequence even while an all-ASCII fixture stays intact.
+# ---------------------------------------------------------------------------
+{
+    # 'é' and '€' as raw UTF-8 byte sequences (0xC3 0xA9 and 0xE2 0x82 0xAC) —
+    # exactly what a receiver reading the request body as bytes (not decoded
+    # text) hands to verify().
+    my $raw_body = "{\"note\":\"caf\xc3\xa9 \xe2\x82\xac\",\"id\":\"evt-utf8\"}";
+
+    my $sent_body;
+    no warnings 'redefine';
+    local *WWW::PayPal::API::Webhooks::call_operation = sub {
+        my ($self, $op, %args) = @_;
+        $sent_body = $args{body};
+        return { verification_status => 'SUCCESS' };
+    };
+
+    $pp->webhooks->verify(
+        webhook_id        => 'WH-CONFIG-1',
+        raw_body          => $raw_body,
+        transmission_id   => 't', transmission_time => 'x',
+        transmission_sig  => 's', cert_url => 'u', auth_algo => 'a',
+    );
+
+    ok !ref $sent_body, 'non-ASCII body: request body is still a non-ref scalar';
+    ok index($sent_body, $raw_body) >= 0,
+        'non-ASCII body: raw UTF-8 bytes survive the splice verbatim (byte-based, not character-based)';
+}
+
+# ---------------------------------------------------------------------------
 # (c) verify returns a real boolean: 1 for SUCCESS, 0 (false) for FAILURE.
 #     A forged event is HTTP 200 + FAILURE and must never be truthy.
 # ---------------------------------------------------------------------------
@@ -100,6 +190,38 @@ isa_ok $pp->webhooks, 'WWW::PayPal::API::Webhooks', 'webhooks controller';
     );
     is $r, 0, 'verify returns 0 on FAILURE';
     ok !$r, 'FAILURE result is falsey (forged signature never grants access)';
+}
+
+# ---------------------------------------------------------------------------
+# (c2) verify returns exactly 0 when verification_status is missing or undef
+#      in PayPal's response — the fail-closed `// ''` branch. Only the
+#      SUCCESS/FAILURE string values were exercised above; if a refactor
+#      dropped the `// ''` and compared $data->{verification_status} eq
+#      'SUCCESS' directly, an undef value would warn under `use warnings`
+#      and could — depending on how the comparison is restructured — stop
+#      being reliably falsey. This pins the current fail-closed value exactly.
+# ---------------------------------------------------------------------------
+{
+    no warnings 'redefine';
+    local *WWW::PayPal::API::Webhooks::call_operation = sub { return {} };
+    my $r = $pp->webhooks->verify(
+        webhook_id        => 'WH-CONFIG-1',
+        raw_body          => '{"id":"evt"}',
+        transmission_id   => 't', transmission_time => 'x',
+        transmission_sig  => 's', cert_url => 'u', auth_algo => 'a',
+    );
+    is $r, 0, 'verify returns exactly 0 when verification_status key is absent from the response';
+}
+{
+    no warnings 'redefine';
+    local *WWW::PayPal::API::Webhooks::call_operation = sub { return undef };
+    my $r = $pp->webhooks->verify(
+        webhook_id        => 'WH-CONFIG-1',
+        raw_body          => '{"id":"evt"}',
+        transmission_id   => 't', transmission_time => 'x',
+        transmission_sig  => 's', cert_url => 'u', auth_algo => 'a',
+    );
+    is $r, 0, 'verify returns exactly 0 when call_operation itself returns undef';
 }
 
 # missing / empty required args croak (spot-check two of the seven)
