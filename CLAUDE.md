@@ -15,8 +15,8 @@ duplicated rule is a rule that will drift. Each of these has exactly one source 
 | Distribution internals — layer split, operation tables, entity contract, how to add an API | skill `www-paypal-core` |
 | PayPal's own domain model — flows, states, webhooks, idempotency, money rules | skill `paypal-integration` |
 | The library as consumers see it — usage, migration from ExpressCheckout, gotchas | skill `perl-www-paypal` |
-| Perl house style, Moo patterns | skills `perl-core`, `perl-moo` |
-| Build, POD directives, `Changes`/`{{$NEXT}}`, version semantics, release workflow | skills `perl-release-author-getty`, `perl-release-dist-ini` |
+| Perl house style, Moo patterns | skills `getty-perl-core`, `getty-perl-moo` |
+| Build, POD directives, `Changes`/`{{$NEXT}}`, version semantics, release workflow | skills `getty-perl-release-author-getty`, `perl-release-dist-ini` |
 
 `paypal-integration` is deliberately library-agnostic and `perl-www-paypal` deliberately
 contributor-agnostic, so both can be hardlinked into consuming projects on their own.
