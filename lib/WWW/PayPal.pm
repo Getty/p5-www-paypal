@@ -12,7 +12,7 @@ use WWW::PayPal::API::Subscriptions;
 use WWW::PayPal::API::Webhooks;
 use namespace::clean;
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 
 =head1 SYNOPSIS
 

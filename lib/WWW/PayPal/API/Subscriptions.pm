@@ -7,7 +7,7 @@ use Carp qw(croak);
 use WWW::PayPal::Subscription;
 use namespace::clean;
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 
 =head1 SYNOPSIS
 

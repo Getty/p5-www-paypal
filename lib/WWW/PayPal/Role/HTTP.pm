@@ -11,7 +11,7 @@ use MIME::Base64 qw(encode_base64);
 use URI;
 use Log::Any qw($log);
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 
 =head1 SYNOPSIS
 

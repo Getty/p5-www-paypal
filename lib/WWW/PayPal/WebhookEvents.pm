@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use Exporter qw( import );
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 
 =head1 SYNOPSIS
 
