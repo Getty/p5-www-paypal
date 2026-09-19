@@ -1,6 +1,6 @@
 Revision history for WWW-PayPal
 
-{{$NEXT}}
+0.003     2026-09-19 17:28:23Z
     - WWW::PayPal::API::Webhooks (Notifications v1): new controller for
       webhook endpoint management and signature verification. verify()
       calls POST /v1/notifications/verify-webhook-signature and returns a
