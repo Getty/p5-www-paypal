@@ -7,7 +7,7 @@ briefing:
   skills:
     - www-paypal-core
     - getty-perl-core
-    - kanban-issues-karr-cli
+    - kanban-issues-karr-ticket
 ---
 
 You are the www-paypal-test-writer for **WWW::PayPal**.

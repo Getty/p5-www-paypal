@@ -5,9 +5,9 @@ model: sonnet
 allowed-tools: Read, Edit, Grep, Glob
 briefing:
   skills:
-    - getty-perl-release-author-getty
     - www-paypal-core
     - perl-www-paypal
+    - getty-perl-pod
 ---
 
 You are the www-paypal-doc-writer for **WWW::PayPal**.

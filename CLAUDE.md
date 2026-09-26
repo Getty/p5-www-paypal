@@ -33,7 +33,7 @@ principle and the lanes are in `.claude/rules/www-paypal-rules.md`.
 | Implement / refactor / debug code under `lib/`, `examples/` | `www-paypal-worker` (default) |
 | Write or extend tests in `t/` | `www-paypal-test-writer` |
 | POD, `Changes`, the consumer skill | `www-paypal-doc-writer` |
-| Pre-release audit (never releases) | `www-paypal-release-checker` |
+| Commits, `Changes`, card → done, pre-release audit | `www-paypal-release-manager` |
 | Payment/subscription flow design or review, webhooks, billing data model | `paypal-expert` |
 
 The agents carry their skills via `briefing.skills` (see `.claude/agents/`); the main

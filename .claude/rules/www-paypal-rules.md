@@ -31,7 +31,7 @@ This rule depends on whether the Agent/Task tool is available to you.
 
 - **You can spawn subagents** (orchestrating main agent): do NOT touch behavior-relevant
   code yourself — delegate. Your lane: coordinate, inspect, plan, review diffs, run
-  tests, manage git, edit non-behavioral docs. When in doubt, delegate. Why: only the
+  tests, edit non-behavioral docs. When in doubt, delegate. Why: only the
   agents below get their skills force-loaded via `briefing.skills`; you get no briefing
   and would touch internals with too little context.
 
@@ -40,7 +40,7 @@ This rule depends on whether the Agent/Task tool is available to you.
   | Implement / refactor / debug anything under `lib/`, `examples/` | `www-paypal-worker` (default) |
   | Write or extend tests in `t/` | `www-paypal-test-writer` |
   | POD, `Changes`, the consumer skill `perl-www-paypal` | `www-paypal-doc-writer` |
-  | Pre-release audit | `www-paypal-release-checker` |
+  | Commits, `Changes`, card → done, pre-release audit | `www-paypal-release-manager` |
   | Payment/subscription flow design or review, webhooks, billing data model | `paypal-expert` |
 
 - **You cannot spawn subagents** (you ARE one of the agents above): the delegation lock
@@ -49,10 +49,13 @@ This rule depends on whether the Agent/Task tool is available to you.
 Behavior-relevant = anything under `lib/` and `t/`, the operation tables, the public API,
 error handling, `cpanfile`, `dist.ini`. Prose docs and `Changes` notes are not.
 
+**Only `www-paypal-release-manager` commits.** A worker leaves a commit-ready tree and hands its card
+to `review`; you then dispatch `www-paypal-release-manager` to cut the commit and close the card.
+
 ## Coordination — karr board (always in scope)
 
 Ticket coordination is the orchestrating agent's job, so `karr` is always in scope —
-don't invoke the `kanban-issues-karr-cli` skill first, just use it. Git-native kanban; state lives in
+don't invoke the `kanban-issues-karr-coordination` skill first, just use it. Git-native kanban; state lives in
 `refs/karr/*`; this repo has its own board.
 
 - `karr list --compact` / `karr board` — open work · `karr show ID` — detail
