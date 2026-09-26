@@ -2,7 +2,6 @@
 name: paypal-expert
 description: "PayPal domain specialist for the application layer — designs and reviews checkout flows, subscription lifecycles, webhook receivers, billing data models, refund and dispute handling, sandbox/live separation. Owns the questions 'what does PayPal actually do here' and 'where does this integration lose money or double-charge', not the internals of any client library. Trigger keywords: PayPal, checkout, order, capture, subscription, plan, billing cycle, dunning, webhook, refund, chargeback, dispute, sandbox, approve_url, entitlement."
 model: inherit
-allowed-tools: Read, Edit, Write, Bash, Glob, Grep
 briefing:
   skills:
     - paypal-integration

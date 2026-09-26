@@ -2,7 +2,7 @@
 name: www-paypal-doc-writer
 description: "Write and maintain WWW::PayPal documentation in the house format — inline POD (=attr / =method / =seealso, ABSTRACT lines, SYNOPSIS), plus the consumer-facing skill perl-www-paypal. Documentation only: never changes behavior. Specify the file or the API change to document."
 model: sonnet
-allowed-tools: Read, Edit, Grep, Glob
+disallowedTools: Write, NotebookEdit, Bash
 briefing:
   skills:
     - www-paypal-core

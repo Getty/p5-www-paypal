@@ -2,7 +2,6 @@
 name: www-paypal-release-manager
 description: "Owns www-paypal's commits and release readiness — cuts commits from the worker's commit-ready tree, writes commit messages and Changes entries, moves karr cards to done. Release audit: WWW::PayPal before a CPAN release — cpanfile prereqs complete and correctly pinned, dist.ini and $VERSION consistent with the Author::GETTY next-version scheme, Changes has a filled {{$NEXT}} section covering everything since the last tag, dzil build clean. Workers never commit; this agent does. Never pushes, tags or releases."
 model: sonnet
-allowed-tools: Read, Edit, Write, Bash, Glob, Grep
 briefing:
   skills:
     - getty-git-commit-style

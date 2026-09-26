@@ -2,7 +2,6 @@
 name: www-paypal-worker
 description: "Default WWW::PayPal worker — implement, refactor, debug and test code in this distribution: API controllers, entity classes, the HTTP/OpenAPI roles, operation tables, examples. Pre-loaded with the distribution's internal architecture, Getty's Perl and Moo conventions, the POD/release conventions, and PayPal's own domain rules. Use for any change under lib/, t/ or examples/. Leaves a commit-ready tree; never commits — commits belong to www-paypal-release-manager."
 model: inherit
-allowed-tools: Read, Edit, Write, Bash, Glob, Grep
 briefing:
   skills:
     - www-paypal-core

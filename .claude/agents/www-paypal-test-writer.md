@@ -2,7 +2,6 @@
 name: www-paypal-test-writer
 description: "Write and extend WWW::PayPal tests in t/. Offline only — never a live PayPal call, never credentials, never network. Use for test additions, regression scaffolding for a reported bug, and coverage of operation tables, path-parameter substitution and entity parsing from recorded JSON payloads."
 model: sonnet
-allowed-tools: Read, Edit, Write, Bash, Glob, Grep
 briefing:
   skills:
     - www-paypal-core
