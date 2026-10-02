@@ -1,6 +1,6 @@
 package WWW::PayPal::API::Webhooks;
 
-# ABSTRACT: PayPal Webhooks API (v1) — management + signature verification
+# ABSTRACT: PayPal Webhooks API (v1) - management + signature verification
 
 use Moo;
 use Carp qw( croak );
