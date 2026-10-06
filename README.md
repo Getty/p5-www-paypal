@@ -48,7 +48,9 @@ my $order = $pp->orders->checkout(
 my $approve_url = $order->approve_url;
 
 # After the buyer approves, capture the payment
-# (replaces GetExpressCheckoutDetails + DoExpressCheckoutPayment)
+# (replaces GetExpressCheckoutDetails + DoExpressCheckoutPayment).
+# On your return_url PayPal passes the order id as ?token=...; that
+# value can go into capture() as received.
 my $captured = $pp->orders->capture($order->id);
 
 print $captured->payer_name,  "\n";

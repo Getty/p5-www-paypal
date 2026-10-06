@@ -155,6 +155,11 @@ Low-level request method used by the API controllers. Accepts C<body>,
 C<query>, C<headers> and C<content_type> named arguments. Returns the decoded
 JSON response; croaks with the PayPal error message on non-2xx.
 
+C<$path> is appended to C<base_url> as given. Values that end up inside it
+have to be percent-encoded by the caller;
+L<WWW::PayPal::Role::OpenAPI/call_operation> does that for its path
+parameters.
+
 =cut
 
 =seealso

@@ -28,6 +28,13 @@ our $VERSION = '0.004';
 Controller for PayPal's Checkout / Orders v2 API. Dispatches via cached
 OpenAPI C<operationId> entries.
 
+In the redirect flow PayPal sends the buyer back to your C<return_url> with
+the order id in the C<token> query parameter. That value can be handed to
+L</capture> or L</get> as received: an id is always sent as a single,
+percent-encoded path segment (see L<WWW::PayPal::Role::OpenAPI>), so a
+manipulated C<token> cannot reach a different endpoint - PayPal just does not
+know the order.
+
 =cut
 
 has client => (

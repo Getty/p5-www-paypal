@@ -1,6 +1,13 @@
 Revision history for WWW-PayPal
 
 {{$NEXT}}
+    - WWW::PayPal::Role::OpenAPI (security): path parameters - order,
+      capture, refund, authorization, product, plan, subscription and
+      webhook ids - are sent as exactly one percent-encoded, UTF-8 encoded
+      path segment, so an id containing "/", "?" or "#" cannot address
+      another endpoint. The "token" of a checkout return URL can be passed
+      to orders->capture() as received. An empty id, "." and ".." croak.
+      Pass ids unencoded: a "%" is encoded as well.
 
 0.003     2026-09-19 17:28:23Z
     - WWW::PayPal::API::Webhooks (Notifications v1): new controller for

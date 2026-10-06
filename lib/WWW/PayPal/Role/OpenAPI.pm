@@ -5,6 +5,7 @@ package WWW::PayPal::Role::OpenAPI;
 use Moo::Role;
 use Carp qw(croak);
 use Log::Any qw($log);
+use URI::Escape qw(uri_escape_utf8);
 
 our $VERSION = '0.004';
 
@@ -45,7 +46,14 @@ trimmed down: no L<OpenAPI::Modern>, no spec loading, just the cached lookup
 table.
 
 Path parameters in curly braces (C<{id}>, C<{capture_id}>, ...) are
-substituted from the C<path> argument to L</call_operation>.
+substituted from the C<path> argument to L</call_operation>. Each value is
+sent as exactly one path segment: it is encoded as UTF-8 and everything
+outside C<A-Z a-z 0-9 - . _ ~> is percent-encoded, so a C</>, C<?>, C<#> or
+C<%> in an id can never address a different endpoint. Ids may therefore be
+passed on as received, including from a request parameter; pass them
+B<unencoded> (as character strings), an already percent-encoded value would be
+encoded a second time. The empty string, C<.> and C<..> cannot be sent as a
+path segment and croak.
 
 Consumers must provide:
 
@@ -79,12 +87,24 @@ for the given C<operationId>.
 
 =cut
 
+# The one place a caller-supplied value becomes part of a request path. Ids
+# reach this from outside (the order id of a checkout return URL comes from
+# the buyer's browser), so the value must stay one segment whatever it holds.
+sub _path_segment {
+    my ($self, $name, $value) = @_;
+    # No encoding helps for these: '' removes the segment, and '.' / '..' are
+    # dot segments to every URL normaliser even when written as %2E.
+    croak "path parameter '$name' cannot be empty, '.' or '..'"
+        if $value eq '' || $value eq '.' || $value eq '..';
+    return uri_escape_utf8($value);
+}
+
 sub _resolve_path {
     my ($self, $path, $params) = @_;
     $params ||= {};
     $path =~ s!\{([^}]+)\}!
         defined $params->{$1}
-            ? $params->{$1}
+            ? $self->_path_segment($1, $params->{$1})
             : croak "missing path parameter '$1' for $path"
     !ge;
     return $path;
