@@ -1,6 +1,11 @@
 Revision history for WWW-PayPal
 
 {{$NEXT}}
+    - WWW::PayPal::API::Webhooks (security): verify() returns 0, without
+      contacting PayPal and without croaking, unless raw_body is exactly one
+      JSON object. A body such as '{"id":"E"},"webhook_id":"X"' can no
+      longer add sibling keys (e.g. a second webhook_id) to the
+      verification request. The bytes sent are still the untouched original.
     - WWW::PayPal::Role::OpenAPI (security): path parameters - order,
       capture, refund, authorization, product, plan, subscription and
       webhook ids - are sent as exactly one percent-encoded, UTF-8 encoded

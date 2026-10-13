@@ -114,6 +114,15 @@ sub verify {
 
     my $raw_body = $args{raw_body};
 
+    # raw_body comes from an unauthenticated inbound request and is spliced
+    # into the request verbatim below. Refuse anything that is not exactly one
+    # JSON object, so a body like '{"id":"E"},"webhook_id":"X"' cannot add
+    # sibling keys (notably a second webhook_id). A forged request is simply
+    # not verified (0), never an exception. Validation only; the bytes sent
+    # stay the untouched original.
+    my $event = eval { JSON::MaybeXS->new->decode($raw_body) };
+    return 0 unless ref $event eq 'HASH';
+
     # Encode ONLY the metadata, then splice the raw event bytes in verbatim.
     # The event body must never pass through a JSON decode+encode round-trip —
     # that would reorder keys / re-whitespace and break the signature. This
@@ -164,6 +173,12 @@ this method splices them into the verification payload verbatim rather than
 decoding and re-encoding, so the signed bytes are preserved. Passing a decoded
 structure (an ArrayRef/HashRef) is a reference and croaks; passing bytes that
 you already round-tripped through a JSON parser will verify as C<FAILURE>.
+
+C<raw_body> must also be exactly one JSON object. Anything else (invalid
+JSON, trailing data such as C<{"id":"E"},"webhook_id":"X">, a non-object
+value) is rejected: this returns C<0> without contacting PayPal and without
+croaking, so a forged request cannot inject sibling keys into the
+verification payload.
 
 =cut
 

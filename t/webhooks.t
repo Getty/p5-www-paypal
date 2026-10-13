@@ -99,7 +99,7 @@ isa_ok $pp->webhooks, 'WWW::PayPal::API::Webhooks', 'webhooks controller';
 #      outgoing body. This test fails the moment that happens.
 # ---------------------------------------------------------------------------
 {
-    my $raw_body = qq({"note":"\$1 \\1 \\g{x} back\\\\slash \$&","id":"x","z":"}"});
+    my $raw_body = qq({"note":"\$1 \\\\1 \\\\g{x} back\\\\slash \$&","id":"x","z":"}"});
 
     # Fixture sanity: prove THIS test's own literal really carries the raw
     # metacharacters rather than something having been interpolated away by
@@ -114,7 +114,7 @@ isa_ok $pp->webhooks, 'WWW::PayPal::API::Webhooks', 'webhooks controller';
     ok index($raw_body, q($&))    >= 0, 'fixture sanity: literal $& present in raw_body';
     ok index($raw_body, q(") . q(z) . q(") . q(:) . q(") . q(}) . q(") . q(})) >= 0,
         'fixture sanity: internal "}" (not the trailing one) present in raw_body';
-    is length($raw_body), 54, 'fixture sanity: raw_body is exactly the intended 54 raw bytes';
+    is length($raw_body), 56, 'fixture sanity: raw_body is exactly the intended 56 raw bytes';
 
     my $sent_body;
     no warnings 'redefine';
@@ -352,6 +352,39 @@ isa_ok $pp->webhooks, 'WWW::PayPal::API::Webhooks', 'webhooks controller';
     is PAYMENT_CAPTURE_DECLINED,   'PAYMENT.CAPTURE.DECLINED',  'constant value PAYMENT_CAPTURE_DECLINED (v2)';
     is PAYMENT_SALE_COMPLETED,     'PAYMENT.SALE.COMPLETED',    'constant value PAYMENT_SALE_COMPLETED';
     is CUSTOMER_DISPUTE_CREATED,   'CUSTOMER.DISPUTE.CREATED',  'constant value CUSTOMER_DISPUTE_CREATED';
+}
+
+# ---------------------------------------------------------------------------
+# raw_body must be exactly one JSON object: no key injection into the
+# verification request, and a forged body is 0, not an exception.
+# ---------------------------------------------------------------------------
+{
+    my $calls = 0;
+    no warnings 'redefine';
+    local *WWW::PayPal::API::Webhooks::call_operation = sub { $calls++; return { verification_status => 'SUCCESS' } };
+
+    for my $bad (
+        '{"id":"E"},"webhook_id":"WH-ATTACKER"',
+        '{"id":"E"} trailing',
+        '[1,2]',
+        '"just a string"',
+        '{not json',
+    ) {
+        my $r = eval {
+            $pp->webhooks->verify(
+                webhook_id        => 'WH-MINE',
+                raw_body          => $bad,
+                transmission_id   => 'tid',
+                transmission_time => '2026-09-10T00:00:00Z',
+                transmission_sig  => 'c2ln==',
+                cert_url          => 'https://api.paypal.com/v1/notifications/certs/x',
+                auth_algo         => 'SHA256withRSA',
+            );
+        };
+        is $@, '', "no exception for body $bad";
+        is $r, 0,  "body $bad is rejected with 0";
+    }
+    is $calls, 0, 'rejected bodies never reach PayPal';
 }
 
 done_testing;
