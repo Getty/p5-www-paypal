@@ -6,6 +6,10 @@ Revision history for WWW-PayPal
       JSON object. A body such as '{"id":"E"},"webhook_id":"X"' can no
       longer add sibling keys (e.g. a second webhook_id) to the
       verification request. The bytes sent are still the untouched original.
+    - WWW::PayPal::API::Orders: checkout() sends amount, item unit_amount
+      and item_total as strings with the decimals of the currency (none for
+      HUF, JPY, TWD; two otherwise), and accepts a zero-priced item.
+      Documented that with items the amount must equal the item sum.
     - WWW::PayPal::Role::OpenAPI (security): path parameters - order,
       capture, refund, authorization, product, plan, subscription and
       webhook ids - are sent as exactly one percent-encoded, UTF-8 encoded

@@ -79,6 +79,15 @@ sub _wrap {
     return WWW::PayPal::Order->new(client => $self->client, data => $data);
 }
 
+# PayPal rejects decimals for these currencies (DECIMALS_NOT_SUPPORTED).
+my %ZERO_DECIMAL = map { $_ => 1 } qw( HUF JPY TWD );
+
+# Every money value is sent as a string with the decimals of its currency.
+sub _money {
+    my ($value, $currency) = @_;
+    return sprintf($ZERO_DECIMAL{ uc($currency // '') } ? '%.0f' : '%.2f', $value);
+}
+
 sub checkout {
     my ($self, %args) = @_;
 
@@ -91,7 +100,7 @@ sub checkout {
     my $amount   = $args{amount};
 
     my $pu = {
-        amount => { currency_code => $currency, value => $amount },
+        amount => { currency_code => $currency, value => _money($amount, $currency) },
     };
     $pu->{description}     = $args{description}     if defined $args{description};
     $pu->{invoice_id}      = $args{invoice_id}      if defined $args{invoice_id};
@@ -103,15 +112,15 @@ sub checkout {
         my @items;
         my $item_total = 0;
         for my $i (@{ $args{items} }) {
-            my $unit = $i->{unit_amount} // $i->{price}
-                or croak 'item unit_amount required';
+            my $unit = $i->{unit_amount} // $i->{price};
+            croak 'item unit_amount required' unless defined $unit;
             my $qty  = $i->{quantity} // 1;
             push @items, {
                 name        => $i->{name} // croak('item name required'),
                 quantity    => "$qty",
                 unit_amount => {
                     currency_code => $i->{currency_code} // $currency,
-                    value         => "$unit",
+                    value         => _money($unit, $i->{currency_code} // $currency),
                 },
                 (defined $i->{sku}         ? (sku         => $i->{sku})         : ()),
                 (defined $i->{description} ? (description => $i->{description}) : ()),
@@ -124,7 +133,7 @@ sub checkout {
         $pu->{amount}{breakdown} = {
             item_total => {
                 currency_code => $currency,
-                value         => sprintf('%.2f', $item_total),
+                value         => _money($item_total, $currency),
             },
         };
     }
@@ -180,7 +189,13 @@ C<application_context> structures for the common single-item checkout so
 callers don't have to.
 
 When C<items> is given, the amount C<breakdown.item_total> is filled in
-automatically (PayPal requires it as soon as items are present).
+automatically (PayPal requires it as soon as items are present). That
+breakdown holds only C<item_total>, so with C<items> the C<amount> must equal
+the item sum; shipping or tax cannot be expressed here (use L</create>).
+
+Every money value (C<amount>, item C<unit_amount>, C<item_total>) is sent as a
+string with the decimals of its currency: two, or none for C<HUF>, C<JPY> and
+C<TWD>. A C<unit_amount> of C<0> is valid.
 
 For multi-unit orders, multi-seller orders, or anything else outside this
 happy path, use L</create> directly.
