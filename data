@@ -1,0 +1,44 @@
+---
+class: standard
+completed: 2026-10-13T20:06:34Z
+created: 2026-10-06T19:49:50Z
+id: 6
+priority: medium
+started: 2026-10-13T20:02:04Z
+status: done
+tags:
+- bug
+- amounts
+- review-2026-10-06
+title: 'orders->checkout: amounts are formatted inconsistently (item_total always
+  %.2f, top-level amount unformatted, free item croaks)'
+updated: 2026-10-13T20:06:34Z
+---
+
+`lib/WWW/PayPal/API/Orders.pm`, `checkout`:
+
+1. `item_total` is built with `sprintf('%.2f', $item_total)` (line 120) regardless of currency. For the zero-decimal currencies PayPal supports (JPY, HUF, TWD) this sends `"1000.00"`, which PayPal rejects (`DECIMALS_NOT_SUPPORTED`); the item `unit_amount` beside it is sent as `"1000"`.
+2. The top-level `amount` is passed through untouched (`value => $amount`). A numeric argument is serialised as a JSON number and loses its trailing zero, while PayPal specifies a string; the item values are stringified (`"$unit"`), the total is not.
+3. (line 99-100) `my $unit = $i->{unit_amount} // $i->{price} or croak 'item unit_amount required'` treats a price of `0` as missing, so a free line item cannot be sent.
+
+Reproduce (fake UA):
+
+```
+$pp->orders->checkout( amount => 19.90, currency => 'JPY', return_url => ..., cancel_url => ...,
+  items => [ { name => 'a', unit_amount => 1000, quantity => 1 } ] );
+# ... "amount":{"breakdown":{"item_total":{"currency_code":"JPY","value":"1000.00"}},"currency_code":"JPY","value":19.9}
+
+$pp->orders->checkout( ..., items => [ { name => 'free', unit_amount => 0 } ] );
+# dies: item unit_amount required
+```
+
+Point 1 and 3 follow from the code; that PayPal refuses a JSON number for `value` (point 2) is not verified against the sandbox.
+
+Also worth deciding in the same card: with `items`, `breakdown` holds only `item_total`, so an `amount` that includes shipping or tax cannot be expressed through `checkout` (PayPal answers `AMOUNT_MISMATCH`); either accept `shipping_total`/`tax_total` or document that `checkout` is for item-only totals.
+
+Done when: one helper formats every money value as a string with the decimals of its currency, `defined` is used for the unit amount, and `t/` covers EUR, JPY and a zero-priced item.
+
+---
+Fleet review 2026-10-06 · kind: bug · confidence: verified
+
+Bereits auf main erledigt in 65cbe8f: _money() formatiert pro Waehrung (JPY/HUF/TWD ohne Dezimalen), amount/item_total/unit_amount sind Strings, defined statt // or fuer unit_amount; t/checkout.t deckt EUR, JPY und Null-Preis ab (prove -lr t gruen). shipping/tax: als 'nur Item-Summe' dokumentiert, Changes-Eintrag vorhanden. Kein weiterer Code noetig.
