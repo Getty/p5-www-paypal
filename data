@@ -1,0 +1,32 @@
+---
+class: standard
+completed: 2026-10-13T19:50:25Z
+created: 2026-10-06T19:49:59Z
+id: 8
+priority: medium
+started: 2026-10-13T19:50:25Z
+status: done
+tags:
+- security
+- webhooks
+- review-2026-10-06
+title: webhooks->verify splices raw_body into the request without checking it is one
+  JSON value
+updated: 2026-10-13T19:50:25Z
+---
+
+`lib/WWW/PayPal/API/Webhooks.pm:130`: `$meta =~ s/\}\z/,"webhook_event":$raw_body}/;`. `raw_body` is the body of an unauthenticated inbound request; the only check is that it is defined, non-empty and not a reference.
+
+A body that closes the value early adds sibling keys to the verification request, including a second `webhook_id`:
+
+```
+$pp->webhooks->verify( webhook_id => 'WH-MINE', raw_body => '{"id":"E"},"webhook_id":"WH-ATTACKER"', ... );
+# sends {"webhook_id":"WH-MINE", ..., "webhook_event":{"id":"E"},"webhook_id":"WH-ATTACKER"}
+```
+
+`webhook_id` is the one field of that request the sender of the webhook is not supposed to control: it is what binds the signature to *our* endpoint. With last-key-wins parsing on PayPal's side, an event genuinely signed for the attacker's own webhook would verify as `SUCCESS`. Whether PayPal's parser is last-wins and whether it checks the webhook id against the calling app is not verified; and a consumer that afterwards `decode_json`s the same bytes strictly would die on the trailing garbage. So this is hardening, not a demonstrated bypass -- but it is one cheap check on the security-critical path.
+
+Done when: `verify` returns 0 (not croak: a forged request must not become a 500) unless `raw_body` decodes as exactly one JSON object, the bytes sent stay the untouched original, and `t/webhooks.t` has the case above.
+
+---
+Fleet review 2026-10-06 · kind: bug · confidence: verified
