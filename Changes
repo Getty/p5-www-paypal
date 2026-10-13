@@ -1,6 +1,13 @@
 Revision history for WWW-PayPal
 
 {{$NEXT}}
+    - WWW::PayPal::Role::OpenAPI, Orders, Payments, Products, Plans,
+      Subscriptions: create/capture/refund style methods accept a
+      request_id argument that is sent as the PayPal-Request-Id header, so
+      a retried call replays the original result instead of creating a
+      second object. call_operation also forwards a headers hash.
+    - maint/regen-operations.pl: extracts the operation tables from the
+      PayPal OpenAPI specs.
     - WWW::PayPal::API::Webhooks (security): verify() returns 0, without
       contacting PayPal and without croaking, unless raw_body is exactly one
       JSON object. A body such as '{"id":"E"},"webhook_id":"X"' can no
