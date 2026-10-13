@@ -250,6 +250,53 @@ Critical rules — get any of these wrong and the receiver is either insecure or
   aliases.** Orders v2 captures (the flow above) emit `DECLINED`; only legacy
   Payments v1 emits `DENIED`. Subscribe to the one matching your capture path.
 
+## Error handling
+
+Every failed call throws a `WWW::PayPal::Error` object (non-2xx answer, a body
+that is not JSON, a network failure, a failed token exchange). It stringifies
+to `PayPal API error (POST /v2/checkout/orders/ID/capture): message` — or
+`PayPal OAuth2 failed: ...` — with no `at FILE line N` suffix, so string
+matching on `$@` and plain `die $@` / logging keep working. It is always true
+in boolean context.
+
+```perl
+use Scalar::Util qw(blessed);
+
+my $captured = eval { $pp->orders->capture($order_id) };
+if ( my $err = $@ ) {
+    die $err unless blessed $err && $err->isa('WWW::PayPal::Error');
+
+    my $issue = $err->issue // '';
+    if    ( $issue eq 'ORDER_ALREADY_CAPTURED' ) { $captured = $pp->orders->get($order_id) }  # idempotent
+    elsif ( $issue eq 'INSTRUMENT_DECLINED' )    { ... send the buyer back to approve_url }
+    elsif ( $err->is_network )                   { ... retry later, outcome unknown }
+    else {
+        warn sprintf "PayPal %s %s (debug_id %s)", $err->status, $err->name // '-', $err->debug_id // '-';
+        die $err;
+    }
+}
+```
+
+| Accessor | Meaning |
+|---|---|
+| `message` | PayPal's `message` / `error_description`, else the HTTP status line |
+| `status` | HTTP status code |
+| `name` | PayPal error name, e.g. `UNPROCESSABLE_ENTITY`, `RESOURCE_NOT_FOUND` |
+| `issue` | `issue` of the first `details` entry, e.g. `INSTRUMENT_DECLINED`, `ORDER_ALREADY_CAPTURED` — branch on this, not on the message text |
+| `details` | ArrayRef of all PayPal `details` entries |
+| `debug_id` | quote this to PayPal support; log it with every failure |
+| `data` / `body` | decoded response (undef if not JSON) / raw response body |
+| `method`, `path` | the failed request; undef for OAuth token failures |
+| `is_network` | true when PayPal never answered (DNS, connect, TLS, timeout) |
+
+- A `401` is handled by the library: it drops the cached token and repeats the
+  request once. You only see a 401 error if the fresh token was rejected too —
+  that means wrong `client_id`/`secret` or a sandbox/live mix-up, not an expiry.
+- `is_network` means the outcome is **unknown** — the request may have reached
+  PayPal. Retry only with the same `request_id` (see the idempotency argument on
+  create/capture/refund methods), never by re-sending a fresh create.
+- Do not retry other 4xx errors; they will fail the same way.
+
 ## Migration from Business::PayPal::API::ExpressCheckout
 
 | Legacy NVP                                   | WWW::PayPal                                    |
@@ -285,4 +332,5 @@ If you find yourself reaching into `->data` repeatedly for the same field across
 - **Products and Plans are permanent.** Cache their IDs; don't recreate them on each app restart.
 - **Freshly created plans start in status `CREATED`** — activate them before creating subscriptions.
 - **PayPal sends the order ID as `?token=` on the Orders return URL**, and as `?subscription_id=` on the Subscriptions return URL. The `ba_token` param is separate (billing agreement token) and usually ignorable.
+- **Errors are `WWW::PayPal::Error` objects, not strings.** `die $@` and `$@ =~ /.../` still work; for branching use `blessed($@) && $@->isa('WWW::PayPal::Error')` and `->issue` / `->is_network`. Always log `->debug_id`.
 - **OAuth callback confusion:** the OAuth2 client-credentials exchange is *not* a user-facing flow. There's no redirect URL, no callback, no HTTPS requirement on your host during token fetch.
