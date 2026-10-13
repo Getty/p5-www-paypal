@@ -24,6 +24,22 @@ Revision history for WWW-PayPal
       another endpoint. The "token" of a checkout return URL can be passed
       to orders->capture() as received. An empty id, "." and ".." croak.
       Pass ids unencoded: a "%" is encoded as well.
+    - WWW::PayPal::Error: failed API calls now throw a
+      WWW::PayPal::Error object instead of a plain string, with status,
+      name, issue (e.g. INSTRUMENT_DECLINED, ORDER_ALREADY_CAPTURED),
+      details, debug_id (for PayPal support), the decoded data and raw body,
+      and is_network. It stringifies exactly as before ("PayPal API error
+      (METHOD PATH): message", "PayPal OAuth2 failed: ..."), so existing
+      "$@ =~ /.../" checks keep working; use blessed($@) && $@->isa(...)
+      to branch on the fields.
+    - WWW::PayPal::Role::HTTP: a 401 discards the cached token and
+      repeats the request once with a fresh one. A response body that is
+      not valid JSON and a transport failure (DNS, connect, timeout) are now
+      thrown as WWW::PayPal::Error as well (is_network is true for the
+      latter) rather than surfacing as a bare decode error or an undef
+      result. A token response without expires_in is cached for 300 s
+      instead of failing, and a 2xx token response without access_token
+      throws.
 
 0.003     2026-09-19 17:28:23Z
     - WWW::PayPal::API::Webhooks (Notifications v1): new controller for

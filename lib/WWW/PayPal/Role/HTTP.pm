@@ -10,6 +10,7 @@ use LWP::UserAgent;
 use MIME::Base64 qw(encode_base64);
 use URI;
 use Log::Any qw($log);
+use WWW::PayPal::Error;
 
 our $VERSION = '0.004';
 
@@ -31,7 +32,14 @@ our $VERSION = '0.004';
 HTTP + OAuth2 client-credentials role consumed by L<WWW::PayPal>. Builds and
 executes JSON requests against PayPal's REST API, handling bearer-token
 acquisition and caching transparently. The token is cached in memory and
-refreshed 60 seconds before its PayPal-reported expiry.
+refreshed 60 seconds before its PayPal-reported expiry (five minutes after
+fetching if PayPal reports none). A C<401> response discards the cached token
+and repeats the request once with a fresh one.
+
+Every failure is thrown as a L<WWW::PayPal::Error> object, which stringifies
+to C<PayPal API error (METHOD PATH): message>. This covers non-2xx answers,
+unparseable response bodies, transport failures and failed token exchanges
+(C<PayPal OAuth2 failed: ...>).
 
 The role requires its consumer to provide C<client_id>, C<secret> and
 C<base_url>.
@@ -76,16 +84,52 @@ sub _fetch_token {
     $req->content('grant_type=client_credentials');
 
     $log->debugf('PayPal OAuth2 token request to %s', $uri);
-    my $res = $self->ua->request($req);
+    my $res  = $self->ua->request($req);
+    my $body = $res->decoded_content;
+    $body = '' unless defined $body;
+    my $data = eval { decode_json($body) };
+    undef $data unless ref $data eq 'HASH';
+
     unless ($res->is_success) {
         $log->errorf('PayPal OAuth2 failed: %s', $res->status_line);
-        croak 'PayPal OAuth2 failed: ' . $res->status_line . ' ' . $res->decoded_content;
+        WWW::PayPal::Error->throw(
+            message => 'PayPal OAuth2 failed: ' . $res->status_line . ' ' . $body,
+            $self->_error_fields($res, $data, $body),
+        );
     }
-    my $data = decode_json($res->decoded_content);
+    unless ($data && defined $data->{access_token}) {
+        $log->errorf('PayPal OAuth2 failed: unusable token response');
+        WWW::PayPal::Error->throw(
+            message => 'PayPal OAuth2 failed: ' . $res->status_line . ' unusable token response ' . $body,
+            $self->_error_fields($res, $data, $body),
+        );
+    }
     $self->_access_token($data->{access_token});
-    # refresh 60s before expiry to be safe
-    $self->_token_expires_at(time + ($data->{expires_in} // 0) - 60);
+    # refresh 60s before expiry to be safe; without expires_in assume 5 minutes
+    $self->_token_expires_at(
+        defined $data->{expires_in} ? time + $data->{expires_in} - 60 : time + 300
+    );
     return $data->{access_token};
+}
+
+sub _error_fields {
+    my ($self, $res, $data, $body) = @_;
+    my $hash    = ref $data eq 'HASH' ? $data : {};
+    my $details = ref $hash->{details} eq 'ARRAY' ? $hash->{details} : [];
+    my $first   = ref $details->[0] eq 'HASH' ? $details->[0] : {};
+    # LWP answers transport failures itself with a synthetic 500
+    my $network = $res->code == 500
+        && ( $res->header('Client-Warning') || $res->header('X-Died') ) ? 1 : 0;
+    return (
+        status     => $res->code,
+        name       => $hash->{name} // $hash->{error},
+        issue      => $first->{issue},
+        details    => $details,
+        debug_id   => $hash->{debug_id},
+        data       => $data,
+        body       => $body,
+        is_network => $network,
+    );
 }
 
 sub access_token {
@@ -108,43 +152,65 @@ sub request {
     my $uri = URI->new($self->base_url . $path);
     $uri->query_form($args{query}) if $args{query};
 
-    my $req = HTTP::Request->new($method => $uri);
-    $req->header(
-        Authorization => 'Bearer ' . $self->access_token,
-        Accept        => 'application/json',
-    );
-    for my $k (keys %{$args{headers} || {}}) {
-        $req->header($k => $args{headers}{$k});
-    }
-
+    my ($content, $ct);
     if (defined $args{body}) {
-        my $ct = $args{content_type} || 'application/json';
-        $req->header('Content-Type' => $ct);
-        if (ref $args{body}) {
-            $req->content(encode_json($args{body}));
-        } else {
-            $req->content($args{body});
+        $ct = $args{content_type} || 'application/json';
+        $content = ref $args{body} ? encode_json($args{body}) : $args{body};
+    }
+
+    my $retried = 0;
+    while (1) {
+        my $req = HTTP::Request->new($method => $uri);
+        $req->header(
+            Authorization => 'Bearer ' . $self->access_token,
+            Accept        => 'application/json',
+        );
+        for my $k (keys %{$args{headers} || {}}) {
+            $req->header($k => $args{headers}{$k});
         }
+        if (defined $content) {
+            $req->header('Content-Type' => $ct);
+            $req->content($content);
+        }
+
+        $log->debugf('PayPal %s %s', $method, $uri);
+        my $res = $self->ua->request($req);
+
+        # A 401 usually means the cached token was revoked or expired early:
+        # drop it and retry exactly once with a fresh one.
+        if ($res->code == 401 && !$retried++) {
+            $log->debugf('PayPal %s %s: 401, refreshing token', $method, $uri);
+            $self->_access_token(undef);
+            $self->_token_expires_at(0);
+            next;
+        }
+
+        my $body = $res->decoded_content;
+        $body = '' unless defined $body;
+        my ($data, $broken);
+        if (length $body && $body =~ /\A\s*[\{\[]/) {
+            $data = eval { decode_json($body) };
+            if ($@) {
+                $broken = 1;
+                undef $data;
+            }
+        }
+
+        if (!$res->is_success || $broken) {
+            my $msg = ref $data eq 'HASH'
+                ? ($data->{message} || $data->{error_description} || $data->{error} || $res->status_line)
+                : $res->status_line;
+            $log->errorf('PayPal API error: %s', $msg);
+            WWW::PayPal::Error->throw(
+                message => $msg,
+                method  => $method,
+                path    => $path,
+                $self->_error_fields($res, $data, $body),
+            );
+        }
+
+        return $data;
     }
-
-    $log->debugf('PayPal %s %s', $method, $uri);
-    my $res = $self->ua->request($req);
-
-    my $body = $res->decoded_content;
-    my $data;
-    if (length $body && $body =~ /\A\s*[\{\[]/) {
-        $data = decode_json($body);
-    }
-
-    unless ($res->is_success) {
-        my $msg = ref $data eq 'HASH'
-            ? ($data->{message} || $data->{error_description} || $data->{error} || $res->status_line)
-            : $res->status_line;
-        $log->errorf('PayPal API error: %s', $msg);
-        croak "PayPal API error ($method $path): $msg";
-    }
-
-    return $data;
 }
 
 =method request
@@ -153,7 +219,10 @@ sub request {
 
 Low-level request method used by the API controllers. Accepts C<body>,
 C<query>, C<headers> and C<content_type> named arguments. Returns the decoded
-JSON response; croaks with the PayPal error message on non-2xx.
+JSON response. On non-2xx, on a body that is not valid JSON, or on a
+transport failure it throws a L<WWW::PayPal::Error> (C<status>, C<name>,
+C<issue>, C<debug_id>, C<is_network>, ...). A C<401> is retried once with a
+fresh token before it is thrown.
 
 C<$path> is appended to C<base_url> as given. Values that end up inside it
 have to be percent-encoded by the caller;

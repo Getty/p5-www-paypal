@@ -86,6 +86,12 @@ monthly/yearly payments).
 Operation dispatch uses cached OpenAPI operation tables (see
 L<WWW::PayPal::Role::OpenAPI>), so no spec parsing happens at runtime.
 
+A failed call to PayPal (non-2xx answer, unparseable body, network failure,
+failed token exchange) throws a L<WWW::PayPal::Error> object. It stringifies to
+C<PayPal API error (METHOD PATH): message>, and carries C<status>, C<name>,
+C<issue>, C<debug_id> and C<is_network> for code that wants to branch on the
+cause.
+
 =cut
 
 has client_id => (
@@ -328,6 +334,8 @@ sub _html_escape {
 =seealso
 
 =over 4
+
+=item * L<WWW::PayPal::Error>
 
 =item * L<https://developer.paypal.com/docs/api/orders/v2/>
 
