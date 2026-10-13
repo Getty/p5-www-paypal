@@ -1,0 +1,36 @@
+---
+class: standard
+completed: 2026-10-13T20:06:29Z
+created: 2026-10-06T19:49:45Z
+id: 5
+priority: high
+started: 2026-10-13T20:01:26Z
+status: done
+tags:
+- bug
+- git
+- idempotency
+- review-2026-10-06
+title: 'Branch phase2-paypal was never merged: k2 (PayPal-Request-Id), k3 (maint script)
+  and k4 (test) are done on the board but missing on main'
+updated: 2026-10-13T20:06:29Z
+---
+
+`git log --oneline main..phase2-paypal` lists three commits from 2026-09-09 that are on no other branch:
+
+- `62d38de` Support PayPal-Request-Id idempotency on create/capture methods (k2)
+- `7cd0b04` Add maint/regen-operations.pl (k3)
+- `e65c552` Test the missing-path-parameter croak through the public dispatch path (k4)
+
+All three cards are `done`, and k2's note says `request_id` is threaded through Orders/Subscriptions/Products/Plans/Payments. On `main` none of it exists: `grep -rn -i 'request.id' lib t` finds nothing, `lib/WWW/PayPal/Role/OpenAPI.pm:93-107` (`call_operation`) forwards only `body`, `query` and `content_type` and silently drops a `headers`/`request_id` argument, there is no `maint/` and no `t/idempotency.t`. 0.003 was cut from `main` after the branch was written (merge-base `5473790`), so the release does not have it either.
+
+User impact: a retried `orders->create` / `orders->capture` / `payments->refund` cannot be made idempotent through this client, although the board says it can.
+
+`git diff --stat main...phase2-paypal`: 9 files, +733/-7 (Orders, Payments, Plans, Products, Subscriptions, Role/OpenAPI, maint/regen-operations.pl, t/idempotency.t, t/openapi.t).
+
+Done when: the three commits are on `main` (rebase/merge; `main` has moved by chores and the webhooks work only, so `API/Webhooks.pm` needs the same `request_id` plumbing checked), `prove -l t` is green including `t/idempotency.t`, `Changes` `{{$NEXT}}` names the `request_id` argument, and the branch is deleted.
+
+---
+Fleet review 2026-10-06 · kind: bug · confidence: verified
+
+Erledigt in 224711e (k2), f98dd43 (k3), bfc3b8c (k4), 399a61a (Changes). Gemessen: prove -lr t gruen, 1362 Tests inkl. t/idempotency.t. Webhooks.create bewusst ohne request_id (PayPal lehnt doppelte Webhook-URL selbst ab). Branch phase2-paypal wird nach ff von main vom Koordinator geloescht.
