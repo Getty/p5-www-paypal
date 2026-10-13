@@ -1,0 +1,37 @@
+---
+class: standard
+completed: 2026-10-13T21:00:29Z
+created: 2026-10-06T19:49:54Z
+id: 7
+priority: medium
+started: 2026-10-13T20:02:31Z
+status: done
+tags:
+- errors
+- api
+- review-2026-10-06
+title: 'API errors are plain strings: HTTP status, name, details[].issue and debug_id
+  are thrown away'
+updated: 2026-10-13T21:00:29Z
+---
+
+`lib/WWW/PayPal/Role/HTTP.pm` (`request`, the `unless ($res->is_success)` block) croaks `"PayPal API error ($method $path): $msg"` where `$msg` is only `message` / `error_description` / `error` of the body.
+
+A PayPal error body carries `name` (`UNPROCESSABLE_ENTITY`), `details[].issue` (`INSTRUMENT_DECLINED`, `ORDER_ALREADY_CAPTURED`, `DUPLICATE_INVOICE_ID`, ...) and `debug_id`. Callers have to branch on `issue` (PayPal's own guidance: on `INSTRUMENT_DECLINED` restart the approval, on `ORDER_ALREADY_CAPTURED` treat the capture as done) and PayPal support asks for `debug_id`. None of that survives; the only way to tell a declined card from a duplicate capture is to regex the generic `message`.
+
+Related in the same block:
+- `decode_json($body)` runs before the status check without `eval`, so an error (or a truncated success) whose body starts with `{` but is not valid JSON dies with a JSON::XS message instead of an API error.
+- A network failure (LWP's internal 500) is reported as `PayPal API error (...): 500 Can't connect ...`, indistinguishable from a real 500.
+- `_fetch_token` likewise `decode_json`s unguarded and, with a missing `expires_in`, sets the expiry to `time - 60`, i.e. fetches a new token on every request.
+- There is no retry on a 401 from a token PayPal has invalidated early.
+
+Done when: `request` throws an exception object (stringifying to the current message, so existing `$@ =~` matching keeps working) with `status`, `name`, `issue`/`details`, `debug_id` and the decoded body, network failures are a distinct class, and `t/` has an offline test for a 422 `INSTRUMENT_DECLINED` body.
+
+---
+Fleet review 2026-10-06 · kind: improvement · confidence: verified
+
+Geprueft (HTTP.pm request): Befund stimmt, nichts davon ist auf main behoben (decode_json ungeschuetzt, nur message im croak). Das ist eine Public-API-Entscheidung, daher nicht umgesetzt. Empfehlung: neue Klasse WWW::PayPal::Error (Moo, overload '""' = bisherige Meldung 'PayPal API error (METHOD PATH): msg', Attribute status, name, issue, details, debug_id, data, is_network), geworfen per die($obj); Netzwerkfehler (LWP 500 mit Client-Warning/X-Died) als is_network=1; decode_json in eval, kaputtes JSON -> Error mit status+raw body; fehlendes expires_in -> Default 300 statt time-60; 401-Retry einmal mit frischem Token. Alles abwaertskompatibel, da $@ =~ weiter matcht. FRAGE (Ein-Buchstabe): Fehlerklasse eigenes Modul WWW::PayPal::Error umsetzen wie beschrieben? j/n
+
+2026-10-13 20:54 Freigabe durch Getty: WWW::PayPal::Error wie in der Notiz empfohlen (Frage = j). Claim von abbau-k5-k7 war gelöst, Umsetzung startet.
+
+2026-10-13 20:59 Done: WWW::PayPal::Error (Moo, overload "" = bisherige Meldung; status/name/issue/details/debug_id/data/body/is_network) wird per die geworfen; Role::HTTP: decode_json in eval, Netzwerkfehler is_network=1, 401 einmal Retry mit frischem Token, expires_in-Default 300; _fetch_token wirft Error ('PayPal OAuth2 failed: ...'; zusätzlich: 2xx ohne access_token wirft). t/errors.t (65 Tests) offline, gegen altes lib/ 54 rot; prove -lr t grün (7 Dateien, 1427 Tests). POD + Changes + Skill perl-www-paypal gepflegt. Branch worktree-k7-api-error-object, Commits f1e4b92 + 931d8b1, kein Push. Merge-Hinweis: SKILL.md im Hauptcheckout ist Hardlink -> nach Merge per cat > neu schreiben, stat prüfen.
