@@ -153,6 +153,27 @@ for my $case ( [ 502, 'Bad Gateway' ], [ 400, 'Bad Request' ], [ 200, 'OK' ] ) {
     is $err, undef, '204 without a body: no error';
 }
 
+# --- a redirect is not followed ----------------------------------------------
+{
+    # A redirect must not be followed: the Authorization header carries the
+    # bearer token, and it would go to the redirect target with it.
+    my $pp = WWW::PayPal->new( client_id => 'test', secret => 'test' );
+    is $pp->ua->max_redirect, 0, 'the user agent does not follow redirects';
+}
+{
+    my ($pp, $ua) = fixture();
+    push @{ $ua->{token} }, token('T1', 3600);
+    push @{ $ua->{api} },   res(302, 'Found', '', Location => 'https://elsewhere.example/orders');
+
+    my $err = caught( sub { $pp->request(GET => '/v2/checkout/orders/X') } );
+    ok blessed $err && $err->isa('WWW::PayPal::Error'), '302: Error object';
+    is eval { $err->status }, 302,                  '302: status';
+    is eval { $err->method }, 'GET',                '302: method';
+    is eval { $err->path }, '/v2/checkout/orders/X', '302: path';
+    is( blessed $err ? "$err" : '', 'PayPal API error (GET /v2/checkout/orders/X): 302 Found',
+        '302: stringification' );
+}
+
 # --- network failure vs. real 500 -------------------------------------------
 {
     my ($pp, $ua) = fixture();

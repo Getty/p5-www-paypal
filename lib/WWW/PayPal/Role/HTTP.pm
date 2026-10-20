@@ -53,16 +53,20 @@ requires 'base_url';
 has ua => (
     is      => 'lazy',
     builder => sub {
+        # no redirects: the Authorization header carries the bearer token, and
+        # a followed redirect would hand it to the redirect target
         LWP::UserAgent->new(
-            agent   => 'WWW-PayPal/' . $WWW::PayPal::Role::HTTP::VERSION,
-            timeout => 30,
+            agent        => 'WWW-PayPal/' . $WWW::PayPal::Role::HTTP::VERSION,
+            timeout      => 30,
+            max_redirect => 0,
         );
     },
 );
 
 =attr ua
 
-The L<LWP::UserAgent> instance used for all HTTP traffic.
+The L<LWP::UserAgent> instance used for all HTTP traffic. It follows no
+redirect: a 3xx is answered as an error.
 
 =cut
 
