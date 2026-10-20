@@ -1,0 +1,28 @@
+---
+claimed_at: 2026-10-20T09:29:29Z
+claimed_by: k9-k14
+class: standard
+completed: 2026-10-20T09:29:29Z
+created: 2026-10-20T08:48:52Z
+id: 10
+priority: high
+started: 2026-10-20T09:12:14Z
+status: done
+tags:
+- http
+- security
+title: A redirect must not carry the bearer token to another host
+updated: 2026-10-20T09:29:29Z
+---
+
+The user agent follows redirects and sends the bearer token along.
+
+lib/WWW/PayPal/Role/HTTP.pm:56-59 builds the LWP::UserAgent with timeout => 30 only, without max_redirect => 0. The default of LWP is 7 redirects, and requests_redirectable covers GET and HEAD.
+
+So a GET that answers 301 or 302 (a maintenance page of PayPal, a CDN, a proxy or a man in the middle) is followed, and the Authorization: Bearer <token> header goes to the redirect target. On the LWP of CPAN the header is not removed (the copy installed in /home/getty/perl5 carries a local patch for that, which cpanfile:5 does not ask for), so the foreign target holds the token, and the answer of the foreign target counts as the success of the call.
+
+The house pattern of the fleet sets max_redirect => 0: p5-www-keycloak/lib/WWW/Keycloak.pm:127, p5-www-mikrotik/lib/WWW/Mikrotik.pm:225, p5-www-authentik:145, p5-www-idrac:271.
+
+Decide: the user agent gets max_redirect => 0, and every 3xx is raised as an error with status, method and path.
+
+2026-10-20 09:17 Done: the user agent is built with max_redirect => 0, so LWP follows no redirect and the Authorization: Bearer header never reaches a foreign target. A 3xx now arrives as the answer and is thrown as WWW::PayPal::Error with status, method and path ('PayPal API error (GET /v2/checkout/orders/X): 302 Found'). Commit 3d0cc70.
