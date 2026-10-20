@@ -285,7 +285,7 @@ if ( my $err = $@ ) {
 | `issue` | `issue` of the first `details` entry, e.g. `INSTRUMENT_DECLINED`, `ORDER_ALREADY_CAPTURED` — branch on this, not on the message text |
 | `details` | ArrayRef of all PayPal `details` entries |
 | `debug_id` | quote this to PayPal support; log it with every failure |
-| `data` / `body` | decoded response (undef if not JSON) / raw response body |
+| `data` / `body` | decoded response (undef if not JSON) / raw response body; both undef for OAuth token failures |
 | `method`, `path` | the failed request; undef for OAuth token failures |
 | `is_network` | true when PayPal never answered (DNS, connect, TLS, timeout) |
 
