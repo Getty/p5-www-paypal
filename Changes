@@ -46,6 +46,8 @@ Revision history for WWW-PayPal
       the method and the path
     - The item total is the sum of the rounded item amounts
     - The prices of a plan are normalised like the amounts of an order
+    - The declared prerequisites are checked by a test that reads the
+      cpanfile
 
 0.003     2026-09-19 17:28:23Z
     - WWW::PayPal::API::Webhooks (Notifications v1): new controller for
