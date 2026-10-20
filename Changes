@@ -40,6 +40,8 @@ Revision history for WWW-PayPal
       result. A token response without expires_in is cached for 300 s
       instead of failing, and a 2xx token response without access_token
       throws.
+    - An answer that is no JSON is an error that names the status, the
+      method and the path
 
 0.003     2026-09-19 17:28:23Z
     - WWW::PayPal::API::Webhooks (Notifications v1): new controller for

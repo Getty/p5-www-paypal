@@ -125,6 +125,34 @@ for my $case ( [ 502, 'Bad Gateway' ], [ 400, 'Bad Request' ], [ 200, 'OK' ] ) {
     like "$err", qr/\APayPal API error \(GET \/v2\/checkout\/orders\/X\): /, "$label: stringifies as API error";
 }
 
+# --- a 2xx answer that is no JSON at all ------------------------------------
+{
+    my ($pp, $ua) = fixture();
+    push @{ $ua->{token} }, token('T1', 3600);
+    my $body = '<html><body>Captive portal login</body></html>';
+    push @{ $ua->{api} }, res(200, 'OK', $body);
+
+    my $err = caught( sub { $pp->request(GET => '/v2/checkout/orders/X') } );
+    ok blessed $err && $err->isa('WWW::PayPal::Error'), '200 with an HTML body: Error object';
+    is eval { $err->status }, 200,                 '200 with an HTML body: status';
+    is eval { $err->method }, 'GET',               '200 with an HTML body: method';
+    is eval { $err->path }, '/v2/checkout/orders/X', '200 with an HTML body: path';
+    is eval { $err->body }, $body,                 '200 with an HTML body: raw body';
+    is eval { $err->data }, undef,                 '200 with an HTML body: data undef';
+    is( blessed $err ? "$err" : '', 'PayPal API error (GET /v2/checkout/orders/X): HTTP 200: the answer was no JSON',
+        '200 with an HTML body: stringification' );
+}
+
+# --- an empty body stays allowed ---------------------------------------------
+{
+    my ($pp, $ua) = fixture();
+    push @{ $ua->{token} }, token('T1', 3600);
+    push @{ $ua->{api} },   res(204, 'No Content');
+
+    my $err = caught( sub { $pp->request(DELETE => '/v1/notifications/webhooks/WH1') } );
+    is $err, undef, '204 without a body: no error';
+}
+
 # --- network failure vs. real 500 -------------------------------------------
 {
     my ($pp, $ua) = fixture();

@@ -188,18 +188,29 @@ sub request {
         my $body = $res->decoded_content;
         $body = '' unless defined $body;
         my ($data, $broken);
-        if (length $body && $body =~ /\A\s*[\{\[]/) {
+        if (length $body) {
+            # Every non-empty body is decoded. A captive portal, a proxy or a
+            # maintenance page answers with HTML, and that must not pass as a
+            # success - and it must not stay an undef either.
             $data = eval { decode_json($body) };
-            if ($@) {
+            if ($@ || ( ref $data ne 'HASH' && ref $data ne 'ARRAY' )) {
                 $broken = 1;
                 undef $data;
             }
         }
 
         if (!$res->is_success || $broken) {
-            my $msg = ref $data eq 'HASH'
-                ? ($data->{message} || $data->{error_description} || $data->{error} || $res->status_line)
-                : $res->status_line;
+            my $msg;
+            if ($broken && $res->is_success) {
+                # The call itself succeeded, the answer is what is unusable.
+                # The status line would not say that, so say it plainly.
+                $msg = 'HTTP ' . $res->code . ': the answer was no JSON';
+            }
+            else {
+                $msg = ref $data eq 'HASH'
+                    ? ($data->{message} || $data->{error_description} || $data->{error} || $res->status_line)
+                    : $res->status_line;
+            }
             $log->errorf('PayPal API error: %s', $msg);
             WWW::PayPal::Error->throw(
                 message => $msg,
@@ -222,7 +233,8 @@ C<query>, C<headers> and C<content_type> named arguments. Returns the decoded
 JSON response. On non-2xx, on a body that is not valid JSON, or on a
 transport failure it throws a L<WWW::PayPal::Error> (C<status>, C<name>,
 C<issue>, C<debug_id>, C<is_network>, ...). A C<401> is retried once with a
-fresh token before it is thrown.
+fresh token before it is thrown. An empty body is allowed - a C<204> answers
+without one.
 
 C<$path> is appended to C<base_url> as given. Values that end up inside it
 have to be percent-encoded by the caller;
