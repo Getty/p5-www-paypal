@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-10-20T09:29:42Z
+claimed_by: k9-k14
+class: standard
+completed: 2026-10-20T09:29:42Z
+created: 2026-10-20T08:49:06Z
+id: 13
+priority: low
+started: 2026-10-20T09:12:29Z
+status: done
+tags:
+- cpanfile
+- test
+title: The declared prerequisites must be checked by a test
+updated: 2026-10-20T09:29:42Z
+---
+
+The cpanfile lists what the code needs, but nothing checks that.
+
+cpanfile:6 requires LWP::Protocol::https and cpanfile:8 requires URI. No test in t/ (load.t, checkout.t, idempotency.t, openapi.t, path-params.t, errors.t, webhooks.t) reads the cpanfile, so a prerequisite that the code uses but that is missing in the cpanfile stays unnoticed. p5-www-picnic/t/cpanfile.t does exactly this.
+
+Decide: a new t/cpanfile.t reads the cpanfile and checks every prerequisite that the code uses.
+
+2026-10-20 09:21 Done: new t/cpanfile.t reads the cpanfile and checks the eight prerequisites the code uses (Moo, namespace::clean, JSON::MaybeXS, LWP::UserAgent, LWP::Protocol::https, HTTP::Request, URI, Log::Any). Test::More stays in the on test block. The test checks a file, not a behaviour, so it is not red against the old lib; verified that it goes red when a prerequisite is missing from the cpanfile. Commit d469578.
