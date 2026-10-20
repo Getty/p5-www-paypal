@@ -1,0 +1,30 @@
+---
+claimed_at: 2026-10-20T09:29:24Z
+claimed_by: k9-k14
+class: standard
+completed: 2026-10-20T09:29:24Z
+created: 2026-10-20T08:48:47Z
+id: 9
+priority: high
+started: 2026-10-20T09:12:08Z
+status: done
+tags:
+- http
+- errors
+title: An answer that is not JSON must not pass as a success
+updated: 2026-10-20T09:29:24Z
+---
+
+An HTTP 200 with a body that is not JSON is treated as a success.
+
+lib/WWW/PayPal/Role/HTTP.pm:191-197 decodes the body only when it starts with { or [. A body that starts with anything else (the HTML login page of a captive portal or a proxy, for example) leaves $data undef and $broken 0, so the error branch at :199 does not fire and the method returns undef without an error.
+
+The failure surfaces much later and somewhere else: $pp->request(GET => ...) returns UNDEF, $pp->orders->get($id) returns an object, and the first access to a field dies with "Can't use an undefined value as a HASH reference at lib/WWW/PayPal/Order.pm line 52". The caller gets neither status nor path.
+
+Decide: a body that is not empty and does not parse as JSON is raised as WWW::PayPal::Error with status, method and path. An empty body (204) stays allowed, otherwise notifications.webhooks.delete (lib/WWW/PayPal/API/Webhooks.pm:247) breaks.
+
+The test that holds this down must be red against the old lib/ and fail as a failed expectation, not as a die.
+
+2026-10-20 09:16 Done: every non-empty body is decoded in Role::HTTP::request; a body that is not a JSON object/array is thrown as WWW::PayPal::Error with status, method, path, body and data. A 2xx with a broken body says 'HTTP 200: the answer was no JSON', a status >= 300 keeps the status line or PayPal's message. An empty body (204) stays allowed. Commit 957a1b3.
+
+2026-10-20 09:16 Decision beyond the letter of the card: a body that decodes to a scalar or to null ('123', 'null') is treated like a broken body, because request() must not hand a scalar or an undef to the controllers - the silent-undef class of bug the card is about would survive otherwise. PayPal answers with an object or an array, so nothing legitimate is affected.
