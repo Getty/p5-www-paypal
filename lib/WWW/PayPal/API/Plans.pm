@@ -59,6 +59,7 @@ has openapi_operations => (
 );
 
 with 'WWW::PayPal::Role::OpenAPI';
+with 'WWW::PayPal::Role::Money';
 
 sub _wrap {
     my ($self, $data) = @_;
@@ -123,7 +124,7 @@ sub create_monthly {
             sequence     => 1,
             total_cycles => 1,
             pricing_scheme => {
-                fixed_price => { value => '0', currency_code => $currency },
+                fixed_price => { value => $self->money( 0, $currency ), currency_code => $currency },
             },
         };
     }
@@ -133,7 +134,7 @@ sub create_monthly {
         sequence     => scalar(@cycles) + 1,
         total_cycles => $args{total_cycles} // 0,    # 0 = forever
         pricing_scheme => {
-            fixed_price => { value => "$args{price}", currency_code => $currency },
+            fixed_price => { value => $self->money( $args{price}, $currency ), currency_code => $currency },
         },
     };
 
@@ -160,6 +161,10 @@ sub create_monthly {
 Convenience shortcut for the common case: a monthly recurring plan with a
 single fixed price and optional free trial. For anything more complex use
 L</create>.
+
+The price is sent with the decimals of its currency: two, or none for C<HUF>,
+C<JPY> and C<TWD>. The price of the trial cycle is a zero and is normalised
+the same way.
 
 =cut
 

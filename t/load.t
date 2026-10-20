@@ -7,6 +7,7 @@ for (qw(
   WWW::PayPal
   WWW::PayPal::Role::HTTP
   WWW::PayPal::Role::OpenAPI
+  WWW::PayPal::Role::Money
   WWW::PayPal::API::Orders
   WWW::PayPal::API::Payments
   WWW::PayPal::API::Products

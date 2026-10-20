@@ -73,19 +73,11 @@ Pre-computed operation table (C<operationId> → C<{method, path}>).
 =cut
 
 with 'WWW::PayPal::Role::OpenAPI';
+with 'WWW::PayPal::Role::Money';
 
 sub _wrap {
     my ($self, $data) = @_;
     return WWW::PayPal::Order->new(client => $self->client, data => $data);
-}
-
-# PayPal rejects decimals for these currencies (DECIMALS_NOT_SUPPORTED).
-my %ZERO_DECIMAL = map { $_ => 1 } qw( HUF JPY TWD );
-
-# Every money value is sent as a string with the decimals of its currency.
-sub _money {
-    my ($value, $currency) = @_;
-    return sprintf($ZERO_DECIMAL{ uc($currency // '') } ? '%.0f' : '%.2f', $value);
 }
 
 sub checkout {
@@ -100,7 +92,7 @@ sub checkout {
     my $amount   = $args{amount};
 
     my $pu = {
-        amount => { currency_code => $currency, value => _money($amount, $currency) },
+        amount => { currency_code => $currency, value => $self->money($amount, $currency) },
     };
     $pu->{description}     = $args{description}     if defined $args{description};
     $pu->{invoice_id}      = $args{invoice_id}      if defined $args{invoice_id};
@@ -119,7 +111,7 @@ sub checkout {
             # The item amount is rounded on its own, the breakdown is the sum
             # of those rounded amounts - PayPal rejects a breakdown that does
             # not add up.
-            my $unit_value = _money($unit, $item_currency);
+            my $unit_value = $self->money($unit, $item_currency);
             push @items, {
                 name        => $i->{name} // croak('item name required'),
                 quantity    => "$qty",
@@ -138,7 +130,7 @@ sub checkout {
         $pu->{amount}{breakdown} = {
             item_total => {
                 currency_code => $currency,
-                value         => _money($item_total, $currency),
+                value         => $self->money($item_total, $currency),
             },
         };
     }

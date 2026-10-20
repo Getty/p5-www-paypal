@@ -45,6 +45,7 @@ Revision history for WWW-PayPal
     - A redirect is not followed, a 3xx is an error that names the status,
       the method and the path
     - The item total is the sum of the rounded item amounts
+    - The prices of a plan are normalised like the amounts of an order
 
 0.003     2026-09-19 17:28:23Z
     - WWW::PayPal::API::Webhooks (Notifications v1): new controller for
