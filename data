@@ -1,0 +1,26 @@
+---
+claimed_at: 2026-10-20T09:29:38Z
+claimed_by: k9-k14
+class: standard
+completed: 2026-10-20T09:29:38Z
+created: 2026-10-20T08:49:01Z
+id: 12
+priority: medium
+started: 2026-10-20T09:12:24Z
+status: done
+tags:
+- plans
+- money
+title: Plan prices must be normalised per currency
+updated: 2026-10-20T09:29:38Z
+---
+
+The price of a plan goes to PayPal unnormalised.
+
+lib/WWW/PayPal/API/Plans.pm:136 puts fixed_price => { value => "$args{price}" } into the request, although WWW::PayPal::API::Orders::_money (:86-89) does exactly this normalisation for the currencies without decimal places.
+
+Example: create_monthly(price => '9.99', currency => 'JPY') sends "9.99" and PayPal answers DECIMALS_NOT_SUPPORTED (JPY has no decimal places); currency => 'EUR', price => 10 sends "10" instead of "10.00" and gets AMOUNT_FORMAT_INVALID. The trial price at :126 sends "0" instead of "0.00".
+
+Decide: the price and the trial value go through the same _money logic before they are sent.
+
+2026-10-20 09:20 Done: new role WWW::PayPal::Role::Money carries the currency table and the formatting, both Orders and Plans call $self->money($value, $currency). The price and the trial price of a plan go through it. Commit 9f84087. Rounding note: sprintf('%.0f', 9.99) gives '10' (JPY), sprintf('%.0f', 10.5) gives '10' - Perl rounds half to even, and 10.5 is exactly representable, so it goes down. The full billing_cycles format of Plans::create is still forwarded unchanged, normalisation of it is not part of this card.
