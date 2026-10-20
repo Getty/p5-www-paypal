@@ -72,8 +72,8 @@ Revision history for WWW-PayPal
       application_context from flat args (amount, currency, return_url,
       cancel_url, + optional brand_name, locale, items[], shipping,
       invoice_id, custom_id, soft_descriptor, description, reference_id,
-      shipping_preference, user_action). Auto-fills amount.breakdown.item_total
-      when items are present.
+      shipping_preference, user_action). Auto-fills
+      amount.breakdown.item_total when items are present.
     - WWW::PayPal: new js_sdk_url() and js_sdk_script_tag() helpers for
       dropping the PayPal JS SDK into a Catalyst/Mojolicious/etc. template.
       Supports currency, intent, locale, components, disable_funding /
