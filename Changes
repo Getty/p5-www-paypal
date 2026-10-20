@@ -1,6 +1,11 @@
 Revision history for WWW-PayPal
 
 {{$NEXT}}
+    - WWW::PayPal::Role::HTTP (security): a failed OAuth2 token exchange
+      names the status line only. The token endpoint may answer with the
+      secret, so its body goes neither into the error message nor into the
+      log nor into the error fields: data and body stay undef. A failed
+      API call still carries PayPal's body as before.
     - WWW::PayPal::Role::OpenAPI, Orders, Payments, Products, Plans,
       Subscriptions: create/capture/refund style methods accept a
       request_id argument that is sent as the PayPal-Request-Id header, so

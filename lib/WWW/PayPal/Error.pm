@@ -113,6 +113,8 @@ has data => ( is => 'ro' );
 =attr data
 
 The decoded response body, or undef if it was missing or not valid JSON.
+Undef for a failed OAuth2 token exchange: the token endpoint's answer does
+not go into the error.
 
 =cut
 
@@ -120,7 +122,7 @@ has body => ( is => 'ro' );
 
 =attr body
 
-The raw response body as received.
+The raw response body as received. Undef for a failed OAuth2 token exchange.
 
 =cut
 

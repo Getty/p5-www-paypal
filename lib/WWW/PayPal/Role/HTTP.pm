@@ -41,6 +41,11 @@ to C<PayPal API error (METHOD PATH): message>. This covers non-2xx answers,
 unparseable response bodies, transport failures and failed token exchanges
 (C<PayPal OAuth2 failed: ...>).
 
+A failed token exchange names the status line only. The token endpoint may
+answer with the secret, so neither its raw body nor its decoded one goes into
+the error: the message, the log and the error fields stay free of it. A
+failed API call carries PayPal's body as before.
+
 The role requires its consumer to provide C<client_id>, C<secret> and
 C<base_url>.
 
@@ -94,18 +99,20 @@ sub _fetch_token {
     my $data = eval { decode_json($body) };
     undef $data unless ref $data eq 'HASH';
 
+    # The token endpoint may answer with the secret, so its body does not go
+    # into the error - neither the raw one nor the decoded one.
     unless ($res->is_success) {
         $log->errorf('PayPal OAuth2 failed: %s', $res->status_line);
         WWW::PayPal::Error->throw(
-            message => 'PayPal OAuth2 failed: ' . $res->status_line . ' ' . $body,
-            $self->_error_fields($res, $data, $body),
+            message => 'PayPal OAuth2 failed: ' . $res->status_line,
+            $self->_token_error_fields($res, $data),
         );
     }
     unless ($data && defined $data->{access_token}) {
-        $log->errorf('PayPal OAuth2 failed: unusable token response');
+        $log->errorf('PayPal OAuth2 failed: %s unusable token response', $res->status_line);
         WWW::PayPal::Error->throw(
-            message => 'PayPal OAuth2 failed: ' . $res->status_line . ' unusable token response ' . $body,
-            $self->_error_fields($res, $data, $body),
+            message => 'PayPal OAuth2 failed: ' . $res->status_line . ' unusable token response',
+            $self->_token_error_fields($res, $data),
         );
     }
     $self->_access_token($data->{access_token});
@@ -121,9 +128,6 @@ sub _error_fields {
     my $hash    = ref $data eq 'HASH' ? $data : {};
     my $details = ref $hash->{details} eq 'ARRAY' ? $hash->{details} : [];
     my $first   = ref $details->[0] eq 'HASH' ? $details->[0] : {};
-    # LWP answers transport failures itself with a synthetic 500
-    my $network = $res->code == 500
-        && ( $res->header('Client-Warning') || $res->header('X-Died') ) ? 1 : 0;
     return (
         status     => $res->code,
         name       => $hash->{name} // $hash->{error},
@@ -132,8 +136,29 @@ sub _error_fields {
         debug_id   => $hash->{debug_id},
         data       => $data,
         body       => $body,
-        is_network => $network,
+        is_network => $self->_is_network($res),
     );
+}
+
+# The token endpoint may answer with the secret: no free text of its answer
+# goes into the error - neither the raw body nor the decoded one, and no
+# details. Only the status and the codes parsed out of the answer remain.
+sub _token_error_fields {
+    my ($self, $res, $data) = @_;
+    my $hash = ref $data eq 'HASH' ? $data : {};
+    return (
+        status     => $res->code,
+        name       => $hash->{name} // $hash->{error},
+        debug_id   => $hash->{debug_id},
+        is_network => $self->_is_network($res),
+    );
+}
+
+# LWP answers transport failures itself with a synthetic 500
+sub _is_network {
+    my ($self, $res) = @_;
+    return $res->code == 500
+        && ( $res->header('Client-Warning') || $res->header('X-Died') ) ? 1 : 0;
 }
 
 sub access_token {

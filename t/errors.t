@@ -271,4 +271,43 @@ for my $case ( [ 502, 'Bad Gateway' ], [ 400, 'Bad Request' ], [ 200, 'OK' ] ) {
     like eval { $err->message }, qr/\APayPal OAuth2 failed:/, 'OAuth 200 without access_token: message prefix';
 }
 
+# --- the OAuth2 path keeps the answer of the token endpoint out -------------
+{
+    # The token endpoint may answer with the secret: it must not end up in the
+    # error message, in the stringification or in the error fields.
+    my $secret = 's3cr3t-e7f1';
+    my $body   = '{"error":"invalid_client","error_description":"the secret is ' . $secret . '"}';
+    my ($pp, $ua) = fixture();
+    push @{ $ua->{token} }, res(401, 'Unauthorized', $body);
+
+    my $err = caught( sub { $pp->request(GET => '/v2/a') } );
+    ok blessed $err && $err->isa('WWW::PayPal::Error'), 'OAuth failure with a secret: Error object';
+    is eval { $err->message }, 'PayPal OAuth2 failed: 401 Unauthorized',
+        'OAuth failure: the message names the status line only';
+    unlike eval { $err->message }, qr/\Q$secret\E/, 'OAuth failure: no secret in the message';
+    unlike eval { $err->message }, qr/\Q$body\E/,   'OAuth failure: no body in the message';
+    unlike "$err", qr/\Q$secret\E/,                 'OAuth failure: no secret in the string';
+    unlike "$err", qr/\Q$body\E/,                   'OAuth failure: no body in the string';
+    is eval { $err->body }, undef,                  'OAuth failure: no raw body in the error';
+    is eval { $err->data }, undef,                  'OAuth failure: no decoded body in the error';
+    is eval { $err->status }, 401,                  'OAuth failure: status';
+    is eval { $err->name }, 'invalid_client',       'OAuth failure: the error code is kept';
+}
+{
+    my $secret = 's3cr3t-3a9c';
+    my $body   = '{"scope":"x","secret":"' . $secret . '"}';
+    my ($pp, $ua) = fixture();
+    push @{ $ua->{token} }, res(200, 'OK', $body);
+
+    my $err = caught( sub { $pp->request(GET => '/v2/a') } );
+    ok blessed $err && $err->isa('WWW::PayPal::Error'), 'unusable token response: Error object';
+    is eval { $err->message }, 'PayPal OAuth2 failed: 200 OK unusable token response',
+        'unusable token response: the message names the status line and the reason';
+    unlike eval { $err->message }, qr/\Q$secret\E/, 'unusable token response: no secret in the message';
+    unlike eval { $err->message }, qr/\Q$body\E/,   'unusable token response: no body in the message';
+    unlike "$err", qr/\Q$secret\E/,                 'unusable token response: no secret in the string';
+    is eval { $err->body }, undef,                  'unusable token response: no raw body in the error';
+    is eval { $err->data }, undef,                  'unusable token response: no decoded body in the error';
+}
+
 done_testing;
