@@ -1,0 +1,26 @@
+---
+claimed_at: 2026-10-20T09:29:33Z
+claimed_by: k9-k14
+class: standard
+completed: 2026-10-20T09:29:33Z
+created: 2026-10-20T08:48:56Z
+id: 11
+priority: medium
+started: 2026-10-20T09:12:19Z
+status: done
+tags:
+- orders
+- money
+title: item_total must be the sum of the rounded item amounts
+updated: 2026-10-20T09:29:33Z
+---
+
+The item values are rounded, the total is not.
+
+lib/WWW/PayPal/API/Orders.pm:129 sums $unit * $qty over the raw values, while every item amount is rounded on its own by _money (:86-89). That contradicts the rule of the distribution (.claude/skills/paypal-integration/SKILL.md:175-179: "Round once ... derive the total from the parts").
+
+Example: items => [{name => 'x', unit_amount => '0.125', quantity => 2}] gives an item amount of '0.12' (a sum of 0.24) against an item_total of '0.25'. PayPal answers 400 UNPROCESSABLE_ENTITY ("item_total must match the sum of items"). In JPY, unit_amount => 10.5 with quantity => 3 gives '10' per item (a sum of 30) against an item_total of '32'.
+
+Decide: the item_total is summed over the already rounded item amounts.
+
+2026-10-20 09:18 Done: Orders::checkout sums the already rounded item amounts into amount.breakdown.item_total, so the breakdown matches the unit_amount values that are sent. Commit 26ba5f5. Also found: an item may carry a currency_code that differs from the order currency - the item amount is then rounded in the item currency, the sum in the order currency, which is not a meaningful sum. Behaviour left untouched (no croak, no warn), PayPal rejects a mixed-currency breakdown anyway.
