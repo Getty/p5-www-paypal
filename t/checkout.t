@@ -38,4 +38,20 @@ is $pu->{amount}{breakdown}{item_total}{value}, '0.00', 'zero item_total';
 eval { $pp->orders->checkout( %base, amount => 1, currency => 'EUR', items => [ { name => 'x' } ] ) };
 like $@, qr/item unit_amount required/, 'missing unit_amount still croaks';
 
+# The breakdown is the sum of the rounded item amounts, not of the raw ones:
+# PayPal rejects a breakdown that does not add up.
+$pp->orders->checkout( %base, amount => '0.25', currency => 'EUR',
+    items => [ { name => 'x', unit_amount => '0.125', quantity => 2 } ] );
+$pu = $sent{purchase_units}[0];
+is $pu->{items}[0]{unit_amount}{value}, '0.12', 'the item amount is rounded on its own';
+is $pu->{amount}{breakdown}{item_total}{value}, '0.24',
+    'the item total is the sum of the rounded item amounts';
+
+$pp->orders->checkout( %base, amount => 30, currency => 'JPY',
+    items => [ { name => 'x', unit_amount => 10.5, quantity => 3 } ] );
+$pu = $sent{purchase_units}[0];
+is $pu->{items}[0]{unit_amount}{value}, '10', 'the JPY item amount is rounded on its own';
+is $pu->{amount}{breakdown}{item_total}{value}, '30',
+    'the JPY item total is the sum of the rounded item amounts';
+
 done_testing;

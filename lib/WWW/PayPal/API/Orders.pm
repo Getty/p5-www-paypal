@@ -115,18 +115,23 @@ sub checkout {
             my $unit = $i->{unit_amount} // $i->{price};
             croak 'item unit_amount required' unless defined $unit;
             my $qty  = $i->{quantity} // 1;
+            my $item_currency = $i->{currency_code} // $currency;
+            # The item amount is rounded on its own, the breakdown is the sum
+            # of those rounded amounts - PayPal rejects a breakdown that does
+            # not add up.
+            my $unit_value = _money($unit, $item_currency);
             push @items, {
                 name        => $i->{name} // croak('item name required'),
                 quantity    => "$qty",
                 unit_amount => {
-                    currency_code => $i->{currency_code} // $currency,
-                    value         => _money($unit, $i->{currency_code} // $currency),
+                    currency_code => $item_currency,
+                    value         => $unit_value,
                 },
                 (defined $i->{sku}         ? (sku         => $i->{sku})         : ()),
                 (defined $i->{description} ? (description => $i->{description}) : ()),
                 (defined $i->{category}    ? (category    => $i->{category})    : ()),
             };
-            $item_total += $unit * $qty;
+            $item_total += $unit_value * $qty;
         }
         $pu->{items} = \@items;
         # PayPal requires a breakdown when items are present
@@ -193,7 +198,9 @@ callers don't have to.
 When C<items> is given, the amount C<breakdown.item_total> is filled in
 automatically (PayPal requires it as soon as items are present). That
 breakdown holds only C<item_total>, so with C<items> the C<amount> must equal
-the item sum; shipping or tax cannot be expressed here (use L</create>).
+the item sum; shipping or tax cannot be expressed here (use L</create>). The
+C<item_total> is the sum of the rounded item amounts, so it matches the
+C<unit_amount> values that are sent.
 
 Every money value (C<amount>, item C<unit_amount>, C<item_total>) is sent as a
 string with the decimals of its currency: two, or none for C<HUF>, C<JPY> and
