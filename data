@@ -1,0 +1,53 @@
+---
+claimed_at: 2026-10-20T16:04:18Z
+claimed_by: k15-paypal
+class: standard
+completed: 2026-10-20T16:04:18Z
+created: 2026-10-20T15:49:01Z
+id: 15
+priority: medium
+started: 2026-10-20T16:04:18Z
+status: done
+tags:
+- security
+- errors
+title: Der OAuth2-Fehlertext legt den rohen Body in die Meldung
+updated: 2026-10-20T16:04:18Z
+---
+
+Der OAuth2-Fehlerpfad legt den rohen Antwort-Body in die Fehlermeldung.
+
+lib/WWW/PayPal/Role/HTTP.pm:100 und :107 — der Text lautet
+'PayPal OAuth2 failed: ' . $res->status_line . ' ' . $body
+und im unbrauchbaren Fall 'PayPal OAuth2 failed: ' . $res->status_line .
+' unusable token response ' . $body. Geht die Antwort des Token-Endpunkts
+ein Secret zurück, steht es im Exception-Text und damit in jedem Log, der
+die Meldung mitgibt.
+
+Entscheidung des Maintainers (Getty, 2026-10-20): der Body des
+Token-Pfads gehört nicht in die Fehlermeldung.
+
+Umsetzung:
+- Die Meldung nennt die Statuszeile und im unbrauchbaren Fall den Hinweis
+  'unusable token response'; der Body wird weggelassen.
+- Die Fehlerfelder (_error_fields) dürfen den Body nicht wieder aufnehmen;
+  das ist zu pruefen und gegebenenfalls anzupassen.
+- Der API-Pfad bleibt unveraendert: dort traegt die Fehlermeldung weiter den
+  Body (das war die Entscheidung aus k7). Nur der Token-Pfad aendert sich.
+- Das Log (errorf) nennt weiterhin die Statuszeile, aber nicht den Body.
+
+Test: neu, und gegen das alte lib nachweislich rot — das alte lib legt den
+Body in die Meldung, das neue nicht. Kein "Can't locate", sondern ein
+Verhaltensfehler.
+
+Dokumentation: POD und README, falls sie das Fehlerbild beschreiben.
+
+Umgesetzt: der Token-Pfad nennt in der Meldung nur die Statuszeile ('PayPal OAuth2 failed: 401 Unauthorized', im unbrauchbaren Fall '... 200 OK unusable token response'); der Body wird weggelassen. Die Fehlerfelder des Token-Pfades (_token_error_fields) tragen status, name, debug_id und is_network - kein body, kein data, keine details (die waren fuer den Token-Pfad vorher ohnehin leer). Der API-Pfad bleibt unveraendert: dort traegt die Fehlermeldung weiter den Body (k7). Commit 1f8dbd7 auf Branch k15-paypal.
+
+Verifiziert: der neue Test in t/errors.t ist gegen das alte lib nachweislich rot (13 Fehlschlaege, Verhaltensfehler: Meldung/Stringification enthalten den Body, body und data sind gesetzt) und gegen das neue lib gruen. Volle Suite offline: prove -lr t/ -> 9 Dateien, 1477 Tests, alle gruen.
+
+Zwei Entscheidungen, die die Karte offen liess: (1) Das Log der unbrauchbaren Antwort nennt jetzt auch die Statuszeile ('PayPal OAuth2 failed: %s unusable token response'), vorher stand dort nur der Hinweis - die Karte verlangt, dass das Log die Statuszeile nennt. (2) Die Fehlerfelder des Token-Pfades behalten die aus dem Body geparsten Codes (name, debug_id), weil invalid_client die einzige brauchbare Diagnose eines fehlgeschlagenen Token-Austauschs ist; frei formulierter Text (body, data, details) faellt weg.
+
+Also found: das Consumer-Skill perl-www-paypal (hartgelinkt in hiplatform und goldmine) fuehrt in seiner Fehlertabelle data/body ohne den Token-Fall; fuer einen fehlgeschlagenen Token-Austausch sind beide jetzt undef. Gehoert zum www-paypal-doc-writer (Skill ist geteilt, hier nicht angefasst). Das README beschreibt das Fehlerbild nicht - daher keine Aenderung dort.
+
+2026-10-20 15:59 Fertig: Der OAuth2-Token-Pfad legt den Body nicht mehr in die Fehlermeldung, ins Log und nicht mehr in die Fehlerfelder (body/data bleiben undef, status/name/debug_id/is_network bleiben). API-Pfad unveraendert (Body weiterhin in der Meldung, k7). Commit 1f8dbd7 auf k15-paypal, neuer Test in t/errors.t war gegen das alte lib rot (13 Verhaltensfehler), volle Suite gruen (9 Dateien, 1477 Tests, offline). Details in den Notizen.
