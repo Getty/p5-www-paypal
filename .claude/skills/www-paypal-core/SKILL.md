@@ -132,6 +132,38 @@ perl -MLWP::ConsoleLogger::Everywhere examples/buy_demo.pl --client-id … --sec
 
 Full request/response dump for anything using the default transport.
 
+## Hazards — the mechanisms behind the short rules
+
+**The tests are offline because the alternative costs money.** A live call against
+a live client id moves real money; against a sandbox id it silently pollutes the
+sandbox account with orders, products and plans that nobody cleans up. So `t/`
+never has credentials, never reads `client_id`/`secret` from the environment and
+never lets a request leave the process. Coverage comes from recorded JSON
+payloads fed into the entity classes plus assertions over the operation tables.
+Anything that needs a real token is not a test — it is an example, and it belongs
+in `examples/`.
+
+**The sandbox and the live environment are different databases.** Product, plan,
+subscription and capture ids from one environment 404 in the other, and the
+client's `sandbox` attribute decides which base URL is used. Never put an id
+from either environment into a code constant or a test fixture that could be
+mistaken for configuration: a recorded payload is a payload, and the id in it
+is dead outside the environment it came from.
+
+**The shared skills are installed copies, one per checkout.** `perl-www-paypal`
+is shared with `hiplatform` and `goldmine`, `perl-release-*` with ~76 projects.
+They arrive through `skilletor`, and the next `skilletor sync` overwrites them.
+An `Edit`/`Write` on such a file rewrites and replaces it — a fresh inode — so
+the change lands only in this checkout and is gone at the next sync, while every
+other copy keeps the old content. Edit only with `cat > path <<'EOF'`, then
+verify with `stat -c '%i %h' path`. Full rules: skill `manage-skills`.
+
+**A build tree in the working directory is how stale copies get read as
+source.** `dzil build` leaves `.build/` and `WWW-PayPal-*/` behind, and both
+hold a copy of the module. A later `prove -lr t` or `perl -Ilib` can pick up
+the built copy instead of the working tree — and then the suite tests the code
+as it was at build time. `dzil clean` after every `dzil build`.
+
 ## Related
 
 - Skill `perl-www-paypal` — consumer-facing API surface (what the library looks
