@@ -11,7 +11,8 @@ duplicated rule is a rule that will drift. Each of these has exactly one source 
 
 | Topic | Source |
 |---|---|
-| House rules, delegation lock, release permission, repo hazards | `.claude/rules/www-paypal-rules.md` (auto-loaded) |
+| Shared house rules — discipline, delegation lock, publish gate, karr, CPAN release | skilletor bundle `getty-cpan-dist@getty` (auto-loaded) |
+| Lanes, repo hazards | `.claude/rules/www-paypal-rules.md` (auto-loaded) |
 | Distribution internals — layer split, operation tables, entity contract, how to add an API | skill `www-paypal-core` |
 | PayPal's own domain model — flows, states, webhooks, idempotency, money rules | skill `paypal-integration` |
 | The library as consumers see it — usage, migration from ExpressCheckout, gotchas | skill `perl-www-paypal` |
@@ -26,7 +27,8 @@ public API here means updating it, or those projects go stale silently.
 ## Delegation
 
 Delegate behavior-relevant code to the right agent instead of touching it yourself — the
-principle and the lanes are in `.claude/rules/www-paypal-rules.md`.
+delegation lock is a shared house rule (skilletor bundle `getty-cpan-dist@getty`); the lanes
+are in `.claude/rules/www-paypal-rules.md`.
 
 | Task | Agent |
 |---|---|
@@ -38,7 +40,7 @@ principle and the lanes are in `.claude/rules/www-paypal-rules.md`.
 
 The agents carry their skills via `briefing.skills` (see `.claude/agents/`); the main
 agent delegates rather than loading them. Skill sources live under `.claude/skills/` —
-most are hardlinks, so read the hazards section of the rules file before editing one.
+most are skilletor installs, so read the hazards section of the rules file before editing one.
 
 `paypal-expert` is intentionally un-prefixed and knows nothing about this distribution's
 internals: it is the PayPal *application layer* specialist, meant to be hardlinked into
