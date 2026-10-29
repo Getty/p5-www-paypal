@@ -25,8 +25,8 @@ Two documentation surfaces, both of which must stay true:
    concerned.
 2. **Skill `perl-www-paypal`** — the consumer-facing surface, written for an AI
    working in a *project that imports the library*, not for a contributor. It is
-   **hardlinked into consuming projects** (currently `hiplatform` and
-   `goldmine`), so it drifts invisibly when the public API changes and nobody
+   **hardlinked into consuming projects** (several downstream
+   apps), so it drifts invisibly when the public API changes and nobody
    updates it. Edit it only with a shell redirect (`cat > path <<'EOF'`) — the
    `Edit`/`Write` tools mint a new inode and silently break every other copy.
 

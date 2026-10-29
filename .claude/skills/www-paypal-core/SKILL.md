@@ -151,7 +151,7 @@ mistaken for configuration: a recorded payload is a payload, and the id in it
 is dead outside the environment it came from.
 
 **The shared skills are installed copies, one per checkout.** `perl-www-paypal`
-is shared with `hiplatform` and `goldmine`, `perl-release-*` with ~76 projects.
+is shared with downstream apps, `perl-release-*` with ~76 projects.
 They arrive through `skilletor`, and the next `skilletor sync` overwrites them.
 An `Edit`/`Write` on such a file rewrites and replaces it — a fresh inode — so
 the change lands only in this checkout and is gone at the next sync, while every

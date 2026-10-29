@@ -21,7 +21,7 @@ duplicated rule is a rule that will drift. Each of these has exactly one source 
 
 `paypal-integration` is deliberately library-agnostic and `perl-www-paypal` deliberately
 contributor-agnostic, so both can be hardlinked into consuming projects on their own.
-`perl-www-paypal` currently ships that way into `hiplatform` and `goldmine` — changing the
+`perl-www-paypal` ships that way into downstream projects — changing the
 public API here means updating it, or those projects go stale silently.
 
 ## Delegation
