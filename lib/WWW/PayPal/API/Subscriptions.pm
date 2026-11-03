@@ -39,7 +39,7 @@ recurring-payment side of the subscription flow. A subscription references a
 L<plan|WWW::PayPal::API::Plans> (which in turn references a
 L<product|WWW::PayPal::API::Products>).
 
-After the buyer approves the subscription at L</approve_url>, PayPal will
+After the buyer approves the subscription at L<< approve_url|WWW::PayPal::Subscription/approve_url >>, PayPal will
 automatically bill them on the plan's schedule (e.g. monthly). No per-cycle
 server action is needed — listen for webhooks
 (C<BILLING.SUBSCRIPTION.*>, C<PAYMENT.SALE.COMPLETED>) if you want to react
