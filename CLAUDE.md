@@ -20,7 +20,7 @@ duplicated rule is a rule that will drift. Each of these has exactly one source 
 | Build, POD directives, `Changes`/`{{$NEXT}}`, version semantics, release workflow | skills `getty-perl-release-author-getty`, `perl-release-dist-ini` |
 
 `paypal-integration` is deliberately library-agnostic and `perl-www-paypal` deliberately
-contributor-agnostic, so both can be hardlinked into consuming projects on their own.
+contributor-agnostic, so consuming projects can install each on its own with skilletor.
 `perl-www-paypal` ships that way into downstream projects — changing the
 public API here means updating it, or those projects go stale silently.
 
@@ -43,7 +43,7 @@ agent delegates rather than loading them. Skill sources live under `.claude/skil
 most are skilletor installs, so read the hazards section of the rules file before editing one.
 
 `paypal-expert` is intentionally un-prefixed and knows nothing about this distribution's
-internals: it is the PayPal *application layer* specialist, meant to be hardlinked into
+internals: it is the PayPal *application layer* specialist, meant to be installed into
 any project that takes PayPal money, together with skill `paypal-integration`.
 
 ## Coordination

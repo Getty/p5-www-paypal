@@ -50,7 +50,7 @@ not fixes here.
 ## Portability
 
 This agent is deliberately **not** prefixed to this repository and carries no
-knowledge of the distribution's internals — it is meant to be hardlinked into any
+knowledge of the distribution's internals — it is meant to be installed into any
 project that takes PayPal money, alongside skill `paypal-integration`. When
 porting it, `paypal-integration` is the one required briefing; drop
 `perl-www-paypal` if the target project uses a different client, and add that

@@ -25,10 +25,10 @@ Two documentation surfaces, both of which must stay true:
    concerned.
 2. **Skill `perl-www-paypal`** — the consumer-facing surface, written for an AI
    working in a *project that imports the library*, not for a contributor. It is
-   **hardlinked into consuming projects** (several downstream
+   **installed into consuming projects** by skilletor (several downstream
    apps), so it drifts invisibly when the public API changes and nobody
-   updates it. Edit it only with a shell redirect (`cat > path <<'EOF'`) — the
-   `Edit`/`Write` tools mint a new inode and silently break every other copy.
+   updates it. Its source is this repo: edit it here, and the consumers pick
+   the change up with their next `skilletor sync`.
 
 Keep the two apart in tone: POD documents *this module*; the skill documents *the
 flow a consumer needs*, including the migration table from

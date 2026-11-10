@@ -59,4 +59,4 @@ in `t/`. Anything needing a real token belongs in `examples/`.
 
 Before finishing a change that touches the public API, check whether skill
 `perl-www-paypal` (the consumer-facing surface) still describes reality — it is
-hardlinked into consuming projects and drifts invisibly.
+installed into consuming projects and drifts invisibly.

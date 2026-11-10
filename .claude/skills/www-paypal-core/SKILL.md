@@ -150,13 +150,12 @@ from either environment into a code constant or a test fixture that could be
 mistaken for configuration: a recorded payload is a payload, and the id in it
 is dead outside the environment it came from.
 
-**The shared skills are installed copies, one per checkout.** `perl-www-paypal`
-is shared with downstream apps, `perl-release-*` with ~76 projects.
-They arrive through `skilletor`, and the next `skilletor sync` overwrites them.
-An `Edit`/`Write` on such a file rewrites and replaces it — a fresh inode — so
-the change lands only in this checkout and is gone at the next sync, while every
-other copy keeps the old content. Edit only with `cat > path <<'EOF'`, then
-verify with `stat -c '%i %h' path`. Full rules: skill `manage-skills`.
+**Shared skills go both ways.** `perl-www-paypal` and `paypal-integration` have
+their source here: downstream apps install them with skilletor, so they are
+edited here and reach the consumers with their next `skilletor sync`. The
+`getty-perl-*`, `perl-release-*` and `kanban-issues-karr-*` skills arrive the
+other way — skilletor installs them from `.claude/skilletor.json` and re-renders them
+on every sync, so a change to one belongs in its source repo.
 
 **A build tree in the working directory is how stale copies get read as
 source.** `dzil build` leaves `.build/` and `WWW-PayPal-*/` behind, and both
